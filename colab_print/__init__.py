@@ -29,7 +29,7 @@ from typing import Optional, Union, Dict, List, Any, Tuple
 import abc
 import warnings
 
-__version__ = "0.1.0"
+__version__ = "0.1.0.post1"
 __author__ = "alaamer12"
 __email__ = "ahmedmuhmmed239@gmail.com"
 __license__ = "MIT"
@@ -644,7 +644,8 @@ class ListDisplayer(Displayer):
             HTML string for the list
         """
         tag = 'ol' if ordered else 'ul'
-        html = [f'<{tag} style="{self.styles.get(style, self.styles['default'])}">']
+        style_base = self.styles.get(style, self.styles['default'])
+        html = [f'<{tag} style="{style_base}">']
         
         list_item_inline_style = self._process_inline_styles(inline_styles)
         final_item_style = item_style if item_style else ""
