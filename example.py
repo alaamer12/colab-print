@@ -2,20 +2,25 @@
 """
 Example usage of the colab-print library.
 
-This script demonstrates various features of the Printer class for displaying
+This script demonstrates various features of the colab-print library for displaying
 styled text, lists, dictionaries, tables, and pandas DataFrames in environments
 that support IPython display (like Jupyter notebooks or Google Colab).
 """
 
 import pandas as pd
-from colab_print import Printer
+from colab_print import (
+    Printer, header, title, subtitle, section_divider, subheader,
+    code, card, quote, badge, data_highlight, footer,
+    highlight, info, success, warning, error, muted, primary, secondary,
+    dfd, table, list_, dict_
+)
 
-def main():
-    """Main function to run the examples."""
+def demo_printer_class():
+    """Demo using the Printer class directly."""
     
-    print("--- Initializing Printer ---")
+    print("=== DEMO: Using Printer Class Directly ===")
     printer = Printer()
-    print(f"Available default styles: {printer.get_available_styles()}")
+    print(f"Available styles: {printer.get_available_styles()}")
 
     # --- Text Display --- 
     print("\n--- Text Display Examples ---")
@@ -95,7 +100,164 @@ def main():
     themed_printer.display("Dark mode style text.", style="dark_mode")
     themed_printer.display_dict({'report_section': 'Results'}, style="report")
 
-    print("\n--- End of Examples ---")
+
+def demo_global_shortcuts():
+    """Demo using the global shortcut functions."""
+    
+    print("\n=== DEMO: Using Global Shortcut Functions ===")
+    
+    # --- Heading & Structure Display ---
+    print("\n--- Heading & Structure Display ---")
+    title("Colab Print Demo")
+    subtitle("A showcase of styling capabilities")
+    header("Main Section Header")
+    subheader("Important Subsection")
+    section_divider("Section Break")
+    
+    # --- Content formatting ---
+    print("\n--- Content Formatting ---")
+    card("This is a card with important content that stands out from the rest of the text")
+    
+    # Add spacing between card and quote to prevent overlap
+    print("")
+    
+    quote("The best way to predict the future is to invent it. - Alan Kay")
+    
+    # Add spacing between quote and code to prevent overlap
+    print("")
+    
+    code("import pandas as pd\ndf = pd.read_csv('data.csv')\nprint(df.head())")
+    
+    # --- Status indicators ---
+    print("\n--- Status Indicators ---")
+    info("This is an informational message")
+    
+    # Add spacing between indicators
+    print("")
+    
+    success("Operation completed successfully!")
+    
+    print("")
+    
+    warning("Please be cautious with this action")
+    
+    print("")
+    
+    error("An error occurred during processing")
+    
+    print("")
+    
+    muted("This is less important information")
+    
+    # --- Special elements ---
+    print("\n--- Special Elements ---")
+    data_highlight("99.8%")
+    
+    # Group badges together but add spacing before and after the group
+    print("")
+    
+    badge("NEW")
+    badge("PRO", background_color="#9C27B0")  # Style override example
+    
+    print("")
+    
+    primary("Primary action button")
+    
+    print("")
+    
+    secondary("Secondary option")
+    
+    print("")
+    
+    highlight("This text needs attention", font_size="20px")  # Style override example
+    
+    print("")
+    
+    footer("© 2023 Colab Print Project")
+    
+    # --- Data Container Display ---
+    print("\n--- Data Container Display ---")
+    
+    # Sample data
+    sample_dict = {
+        "key1": "value1",
+        "key2": "value2",
+        "nested": {"a": 1, "b": 2}
+    }
+    
+    sample_list = ["Item 1", "Item 2", ["Nested 1", "Nested 2"]]
+    
+    headers = ["Name", "Value", "Description"]
+    rows = [
+        ["Alpha", 100, "First item in list"],
+        ["Beta", 200, "Second item in list"],
+        ["Gamma", 300, "Third item in list"]
+    ]
+    
+    data = {
+        'Category': ['A', 'B', 'C', 'D'],
+        'Value1': [10, 20, 30, 40],
+        'Value2': [100, 90, 80, 70]
+    }
+    df = pd.DataFrame(data)
+    
+    # Display with the shortcuts - add space between each display
+    dict_(sample_dict, key_style="color: #1565C0; font-weight: bold;")
+    
+    print("")
+    
+    list_(sample_list, ordered=True)
+    
+    print("")
+    
+    table(headers, rows, caption="Sample Table Data")
+    
+    print("")
+    
+    dfd(df, max_rows=3, caption="Sample DataFrame")
+    
+    # --- Style Override Examples ---
+    print("\n--- Style Override Examples ---")
+    header("Default Header")
+    
+    print("")
+    
+    header("Custom Color Header", color="#E53935") 
+    
+    print("")
+    
+    header("Larger Header", font_size="32px")
+    
+    print("")
+    
+    info("Default Info Message")
+    
+    print("")
+    
+    info("Custom Info", background_color="rgba(3, 169, 244, 0.1)", border_radius="10px")
+    
+    print("")
+    
+    card("Default Card")
+    
+    print("")
+    
+    card("Custom Card", box_shadow="0 4px 8px rgba(0,0,0,0.2)", border_left="5px solid #673AB7")
+
+
+def main():
+    """Main function to run the examples."""
+    
+    print("===== COLAB PRINT LIBRARY DEMO =====")
+    
+    # Uncomment to run the original Printer class demo
+    # demo_printer_class()
+    
+    # Demo the new global shortcut functions
+    demo_global_shortcuts()
+    
+    print("\n===== END OF DEMO =====")
+
 
 if __name__ == "__main__":
     main() 
