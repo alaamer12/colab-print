@@ -124,9 +124,9 @@ SPECIAL_STYLES = {
     
     'section_divider': 'color: #212121; font-size: 18px; font-weight: bold; font-family: Arial, sans-serif; border-bottom: 2px solid #BDBDBD; padding-bottom: 5px; margin: 35px 0 25px 0; letter-spacing: 0.4px; display: block; clear: both;',
     
-    'df': 'color: #000000; font-size: 14px; font-family: Arial, sans-serif; background-color: #FFFFFF; border-collapse: collapse; width: 100%; margin: 30px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: block; clear: both;',
+    'df': 'color: #000000; font-size: 14px; font-family: Arial, sans-serif; background-color: #FFFFFF; border-collapse: collapse; width: 100%; margin: 15px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.1);',
     
-    'table': 'color: #000000; font-size: 15px; font-family: Arial, sans-serif; width: 100%; border-collapse: collapse; margin: 30px 0; box-shadow: 0 1px 4px rgba(0,0,0,0.15); border-radius: 4px; overflow: hidden; display: block; clear: both;',
+    'table': 'color: #000000; font-size: 15px; font-family: Arial, sans-serif; width: 100%; border-collapse: collapse; margin: 15px 0; box-shadow: 0 1px 4px rgba(0,0,0,0.15); border-radius: 4px; overflow: hidden;',
     
     'list': 'color: #000000; font-size: 16px; font-family: Arial, sans-serif; padding-left: 20px; line-height: 1.6; margin: 25px 0; display: block; clear: both;',
     
