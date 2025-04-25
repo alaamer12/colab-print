@@ -13,7 +13,7 @@ from colab_print import (
     code, card, quote, badge, data_highlight, footer,
     highlight, info, success, warning, error, muted, primary, secondary,
     dfd, table, list_, dict_
-)
+) 
 
 def demo_printer_class():
     """Demo using the Printer class directly."""
@@ -117,62 +117,25 @@ def demo_global_shortcuts():
     # --- Content formatting ---
     print("\n--- Content Formatting ---")
     card("This is a card with important content that stands out from the rest of the text")
-    
-    # Add spacing between card and quote to prevent overlap
-    print("")
-    
     quote("The best way to predict the future is to invent it. - Alan Kay")
-    
-    # Add spacing between quote and code to prevent overlap
-    print("")
-    
     code("import pandas as pd\ndf = pd.read_csv('data.csv')\nprint(df.head())")
     
     # --- Status indicators ---
     print("\n--- Status Indicators ---")
     info("This is an informational message")
-    
-    # Add spacing between indicators
-    print("")
-    
     success("Operation completed successfully!")
-    
-    print("")
-    
     warning("Please be cautious with this action")
-    
-    print("")
-    
     error("An error occurred during processing")
-    
-    print("")
-    
     muted("This is less important information")
     
     # --- Special elements ---
     print("\n--- Special Elements ---")
     data_highlight("99.8%")
-    
-    # Group badges together but add spacing before and after the group
-    print("")
-    
     badge("NEW")
     badge("PRO", background_color="#9C27B0")  # Style override example
-    
-    print("")
-    
     primary("Primary action button")
-    
-    print("")
-    
     secondary("Secondary option")
-    
-    print("")
-    
     highlight("This text needs attention", font_size="20px")  # Style override example
-    
-    print("")
-    
     footer("© 2023 Colab Print Project")
     
     # --- Data Container Display ---
@@ -201,47 +164,22 @@ def demo_global_shortcuts():
     }
     df = pd.DataFrame(data)
     
-    # Display with the shortcuts - add space between each display
+    # Display with the shortcuts
     dict_(sample_dict, key_style="color: #1565C0; font-weight: bold;")
-    
-    print("")
-    
     list_(sample_list, ordered=True)
-    
-    print("")
-    
     table(headers, rows, caption="Sample Table Data")
-    
-    print("")
-    
     dfd(df, max_rows=3, caption="Sample DataFrame")
     
     # --- Style Override Examples ---
     print("\n--- Style Override Examples ---")
     header("Default Header")
-    
-    print("")
-    
     header("Custom Color Header", color="#E53935") 
-    
-    print("")
-    
     header("Larger Header", font_size="32px")
     
-    print("")
-    
     info("Default Info Message")
-    
-    print("")
-    
     info("Custom Info", background_color="rgba(3, 169, 244, 0.1)", border_radius="10px")
     
-    print("")
-    
     card("Default Card")
-    
-    print("")
-    
     card("Custom Card", box_shadow="0 4px 8px rgba(0,0,0,0.2)", border_left="5px solid #673AB7")
 
 

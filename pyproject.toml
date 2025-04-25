@@ -1,11 +1,27 @@
 [project]
 name = "colab-print"
-version = "0.1.0.post1"
+version = "0.2.0"
 description = "Enhanced display utilities for Jupyter/Colab notebooks with customizable styles"
 readme = "README.md"
 requires-python = ">=3.8"
 license = {text = "MIT"}
-keywords = ["jupyter", "colab", "display", "dataframe", "styling", "html"]
+keywords = ["jupyter", 
+                "colab",
+                "display",
+                "dataframe",
+                "styling",
+                "html",
+                "visualization",
+                "notebook",
+                "formatting",
+                "presentation",
+                "rich-text",
+                "tables",
+                "pandas",
+                "output",
+                "ipython",
+                "data-science"
+            ]
 authors = [
     { name = "alaamer12", email = "ahmedmuhmmed239@gmail.com" }
 ]

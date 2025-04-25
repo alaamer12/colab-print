@@ -152,7 +152,7 @@ printer.display_df(df)
 
 For a comprehensive demonstration of all features, please see the example script:
 
-[example.py](./example.py)
+[example.py](https://github.com/alaamer12/colab-print/blob/main/example.py)
 
 This script covers:
 - Text, List, Dictionary, Table, and DataFrame display

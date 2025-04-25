@@ -1,25 +1,48 @@
 """
 Colab Print - Enhanced display utilities for Jupyter/Colab notebooks.
 
-This module provides a rich set of display utilities for creating beautiful, 
-customizable HTML outputs in Jupyter and Google Colab notebooks. It includes
-utilities for displaying styled text, tables, and pandas DataFrames with 
-extensive styling options.
+This module provides a comprehensive set of display utilities for creating beautiful, 
+customizable HTML outputs in Jupyter and Google Colab notebooks. It transforms plain
+data into visually appealing, styled content to improve notebook readability and presentation.
 
 Features:
-- Customizable text display with predefined styles
-- Beautiful table formatting with row/column highlighting
-- Rich DataFrame display with extensive styling options
-- Configurable themes and styling
+- 🎨 Rich text styling with 20+ predefined styles (headers, titles, cards, quotes, etc.)
+- 📊 Beautiful DataFrame display with extensive customization options
+- 📑 Customizable tables with header/row styling and cell highlighting
+- 📜 Formatted lists and nested structures with ordered/unordered options
+- 📖 Structured dictionary display with customizable key/value styling
+- 🎭 Extensible theming system for consistent visual styling
+- 📏 Smart row/column limiting for large DataFrames
+- 🔍 Targeted highlighting for specific rows, columns, or individual cells
+- 🔄 Graceful fallbacks when used outside of notebook environments
 
-Usage:
-    from colab_print import Printer
+Content Display Methods:
+- text: printer.display(text, style="default", **inline_styles)
+- tables: printer.display_table(headers, rows, style="default", **table_options)
+- DataFrames: printer.display_df(df, style="default", highlight_cols=[], **options)
+- lists: printer.display_list(items, ordered=False, style="default", **options)
+- dictionaries: printer.display_dict(data, style="default", **options)
+
+Convenience Functions:
+- Text styling: header(), title(), subtitle(), highlight(), info(), success(), etc.
+- Content display: dfd(), table(), list_(), dict_()
+
+Basic Usage:
+    from colab_print import Printer, header, success, dfd
     
+    # Object-oriented style
     printer = Printer()
-    printer.display("Hello World", style="highlight")
+    printer.display("Hello World!", style="highlight")
     
-    # Display a DataFrame
-    printer.display_df(df, style="default", max_rows=20)
+    # Shortcut functions
+    header("Main Section")
+    success("Operation completed successfully")
+    
+    # Content-specific display
+    df = pandas.DataFrame(...)
+    dfd(df, highlight_cols=["important_column"], max_rows=20)
+
+See documentation for complete style list and customization options.
 """
 
 from IPython.display import display as ip_display, HTML
@@ -29,11 +52,37 @@ from typing import Callable, Optional, Union, Dict, List, Any, Tuple
 import abc
 import warnings
 
-__version__ = "0.1.0.post1"
+__version__ = "0.2.0"
 __author__ = "alaamer12"
 __email__ = "ahmedmuhmmed239@gmail.com"
 __license__ = "MIT"
-__keywords__ = ["jupyter", "colab", "display", "dataframe", "styling", "html"]
+__keywords__ = ["jupyter", 
+                "colab",
+                "display",
+                "dataframe",
+                "styling",
+                "html",
+                "visualization",
+                "notebook",
+                "formatting",
+                "presentation",
+                "rich-text",
+                "tables",
+                "pandas",
+                "output",
+                "ipython",
+                "data-science"
+                ]
+__description__ = "Enhanced display utilities for Jupyter/Colab notebooks."
+__url__ = "https://github.com/alaamer12/colab-print"
+__author__ = "alaamer12"
+__author_email__ = "ahmedmuhmmed239@gmail.com"
+__license__ = "MIT"
+__all__ = ["Printer", "header", "title", "subtitle", "section_divider", "subheader", 
+           "code", "card", "quote", "badge", "data_highlight", "footer",
+           "highlight", "info", "success", "warning", "error", "muted", "primary", "secondary",
+           "dfd", "table", "list_", "dict_"]
+__dir__ = sorted(__all__)
 
 # Define the theme types
 DEFAULT_THEMES = {
@@ -51,38 +100,53 @@ DEFAULT_THEMES = {
 
 # Define specialized style variables for easy access
 SPECIAL_STYLES = {
-    'header': 'color: #1A237E; font-size: 24px; font-weight: bold; font-family: Arial, sans-serif; text-align: center; letter-spacing: 1px; padding: 16px 10px; border-top: 2px dashed #1A237E; border-bottom: 2px dashed #1A237E; margin: 20px 0; background-color: rgba(26, 35, 126, 0.05);',
+    'header': 'color: #1A237E; font-size: 24px; font-weight: bold; font-family: Arial, sans-serif; text-align: center; letter-spacing: 1px; padding: 16px 10px; border-top: 2px dashed #1A237E; border-bottom: 2px dashed #1A237E; margin: 30px 0; background-color: rgba(26, 35, 126, 0.05); display: block; clear: both;',
     
-    'subheader': 'color: #283593; font-size: 20px; font-weight: bold; font-family: Arial, sans-serif; letter-spacing: 0.7px; padding: 8px 10px; border-left: 4px solid #283593; margin: 15px 0; background-color: rgba(40, 53, 147, 0.03);',
+    'subheader': 'color: #283593; font-size: 20px; font-weight: bold; font-family: Arial, sans-serif; letter-spacing: 0.7px; padding: 8px 10px; border-left: 4px solid #283593; margin: 25px 0; background-color: rgba(40, 53, 147, 0.03); display: block; clear: both;',
     
-    'title': 'color: #3F51B5; font-size: 28px; font-weight: bold; font-family: Arial, sans-serif; text-align: center; text-shadow: 1px 1px 1px rgba(63, 81, 181, 0.2); letter-spacing: 1.2px; padding: 10px; margin-bottom: 20px;',
+    'title': 'color: #3F51B5; font-size: 28px; font-weight: bold; font-family: Arial, sans-serif; text-align: center; text-shadow: 1px 1px 1px rgba(63, 81, 181, 0.2); letter-spacing: 1.2px; padding: 10px; margin: 35px 0 25px 0; display: block; clear: both;',
     
-    'subtitle': 'color: #5C6BC0; font-size: 18px; font-weight: 600; font-style: italic; font-family: Arial, sans-serif; text-align: center; letter-spacing: 0.5px; margin-bottom: 15px;',
+    'subtitle': 'color: #5C6BC0; font-size: 18px; font-weight: 600; font-style: italic; font-family: Arial, sans-serif; text-align: center; letter-spacing: 0.5px; margin: 20px 0 30px 0; display: block; clear: both;',
     
-    'code_block': 'color: #424242; font-size: 14px; font-family: Arial, sans-serif; background-color: #F5F5F5; padding: 15px; border-radius: 5px; border-left: 4px solid #9E9E9E; margin: 10px 0; overflow-x: auto; white-space: pre-wrap;',
+    'code_block': 'color: #424242; font-size: 14px; font-family: Arial, sans-serif; background-color: #F5F5F5; padding: 15px; border-radius: 5px; border-left: 4px solid #9E9E9E; margin: 25px 0; overflow-x: auto; white-space: pre-wrap; display: block; clear: both;',
     
-    'quote': 'color: #455A64; font-size: 16px; font-style: italic; font-family: Arial, sans-serif; background-color: #ECEFF1; padding: 15px 20px; border-left: 5px solid #78909C; margin: 15px 0; letter-spacing: 0.3px; line-height: 1.6;',
+    'quote': 'color: #455A64; font-size: 16px; font-style: italic; font-family: Arial, sans-serif; background-color: #ECEFF1; padding: 15px 20px; border-left: 5px solid #78909C; margin: 30px 0; letter-spacing: 0.3px; line-height: 1.6; display: block; clear: both;',
     
-    'card': 'color: #333333; font-size: 16px; font-family: Arial, sans-serif; background-color: #FFFFFF; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); margin: 15px 0; border: 1px solid #E0E0E0;',
+    'card': 'color: #333333; font-size: 16px; font-family: Arial, sans-serif; background-color: #FFFFFF; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); margin: 30px 0; border: 1px solid #E0E0E0; display: block; clear: both;',
     
-    'notice': 'color: #004D40; font-size: 16px; font-weight: 600; font-family: Arial, sans-serif; background-color: #E0F2F1; padding: 15px; border-radius: 5px; border: 1px solid #80CBC4; margin: 15px 0; letter-spacing: 0.2px;',
+    'notice': 'color: #004D40; font-size: 16px; font-weight: 600; font-family: Arial, sans-serif; background-color: #E0F2F1; padding: 15px; border-radius: 5px; border: 1px solid #80CBC4; margin: 25px 0; letter-spacing: 0.2px; display: block; clear: both;',
     
-    'badge': 'color: #FFFFFF; font-size: 12px; font-weight: bold; font-family: Arial, sans-serif; background-color: #00897B; padding: 3px 8px; border-radius: 12px; display: inline-block; letter-spacing: 0.5px;',
+    'badge': 'color: #FFFFFF; font-size: 12px; font-weight: bold; font-family: Arial, sans-serif; background-color: #00897B; padding: 3px 8px; border-radius: 12px; display: inline-block; letter-spacing: 0.5px; margin: 5px 5px 5px 0;',
     
-    'footer': 'color: #757575; font-size: 13px; font-style: italic; font-family: Arial, sans-serif; text-align: center; border-top: 1px solid #E0E0E0; padding-top: 10px; margin-top: 30px; letter-spacing: 0.3px;',
+    'footer': 'color: #757575; font-size: 13px; font-style: italic; font-family: Arial, sans-serif; text-align: center; border-top: 1px solid #E0E0E0; padding-top: 10px; margin: 35px 0 15px 0; letter-spacing: 0.3px; display: block; clear: both;',
     
-    'data_highlight': 'color: #0D47A1; font-size: 18px; font-weight: bold; font-family: Arial, sans-serif; background-color: rgba(13, 71, 161, 0.08); padding: 5px 8px; border-radius: 4px; letter-spacing: 0.3px; text-align: center;',
+    'data_highlight': 'color: #0D47A1; font-size: 18px; font-weight: bold; font-family: Arial, sans-serif; background-color: rgba(13, 71, 161, 0.08); padding: 5px 8px; border-radius: 4px; letter-spacing: 0.3px; text-align: center; display: block; margin: 25px 0; clear: both;',
     
-    'section_divider': 'color: #212121; font-size: 18px; font-weight: bold; font-family: Arial, sans-serif; border-bottom: 2px solid #BDBDBD; padding-bottom: 5px; margin: 25px 0 15px 0; letter-spacing: 0.4px;',
+    'section_divider': 'color: #212121; font-size: 18px; font-weight: bold; font-family: Arial, sans-serif; border-bottom: 2px solid #BDBDBD; padding-bottom: 5px; margin: 35px 0 25px 0; letter-spacing: 0.4px; display: block; clear: both;',
     
-    # Add the missing styles
-    'df': 'color: #000000; font-size: 14px; font-family: Arial, sans-serif; background-color: #FFFFFF; border-collapse: collapse; width: 100%; margin: 15px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.1);',
+    'df': 'color: #000000; font-size: 14px; font-family: Arial, sans-serif; background-color: #FFFFFF; border-collapse: collapse; width: 100%; margin: 30px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: block; clear: both;',
     
-    'table': 'color: #000000; font-size: 15px; font-family: Arial, sans-serif; width: 100%; border-collapse: collapse; margin: 15px 0; box-shadow: 0 1px 4px rgba(0,0,0,0.15); border-radius: 4px; overflow: hidden;',
+    'table': 'color: #000000; font-size: 15px; font-family: Arial, sans-serif; width: 100%; border-collapse: collapse; margin: 30px 0; box-shadow: 0 1px 4px rgba(0,0,0,0.15); border-radius: 4px; overflow: hidden; display: block; clear: both;',
     
-    'list': 'color: #000000; font-size: 16px; font-family: Arial, sans-serif; padding-left: 20px; line-height: 1.6; margin: 10px 0;',
+    'list': 'color: #000000; font-size: 16px; font-family: Arial, sans-serif; padding-left: 20px; line-height: 1.6; margin: 25px 0; display: block; clear: both;',
     
-    'dict': 'color: #000000; font-size: 16px; font-family: Arial, sans-serif; background-color: rgba(0,0,0,0.02); padding: 12px; border-radius: 4px; margin: 10px 0; border-left: 3px solid #607D8B;',
+    'dict': 'color: #000000; font-size: 16px; font-family: Arial, sans-serif; background-color: rgba(0,0,0,0.02); padding: 12px; border-radius: 4px; margin: 25px 0; border-left: 3px solid #607D8B; display: block; clear: both;',
+    
+    'highlight': 'color: #E74C3C; font-size: 18px; font-weight: 600; font-family: Arial, sans-serif; text-shadow: 1px 1px 3px rgba(231, 76, 60, 0.3); letter-spacing: 0.6px; background-color: rgba(231, 76, 60, 0.05); padding: 6px 10px; border-radius: 4px; border-left: 3px solid #E74C3C; display: block; margin: 25px 0; clear: both;',
+    
+    'info': 'color: #3498DB; font-size: 16px; font-style: italic; font-family: Arial, sans-serif; border-bottom: 1px dotted #3498DB; letter-spacing: 0.3px; background-color: rgba(52, 152, 219, 0.05); padding: 8px; border-radius: 3px; display: block; margin: 25px 0; clear: both;',
+    
+    'success': 'color: #27AE60; font-size: 16px; font-weight: 600; font-family: Arial, sans-serif; text-shadow: 1px 1px 2px rgba(39, 174, 96, 0.2); letter-spacing: 0.3px; background-color: rgba(39, 174, 96, 0.05); padding: 8px; border-radius: 3px; border-left: 2px solid #27AE60; display: block; margin: 25px 0; clear: both;',
+    
+    'warning': 'color: #F39C12; font-size: 16px; font-weight: 600; font-family: Arial, sans-serif; text-shadow: 1px 1px 2px rgba(243, 156, 18, 0.2); letter-spacing: 0.3px; background-color: rgba(243, 156, 18, 0.05); padding: 8px; border-radius: 3px; border-left: 2px solid #F39C12; display: block; margin: 25px 0; clear: both;',
+    
+    'error': 'color: #C0392B; font-size: 16px; font-weight: 600; font-family: Arial, sans-serif; text-shadow: 1px 1px 2px rgba(192, 57, 43, 0.2); letter-spacing: 0.3px; background-color: rgba(192, 57, 43, 0.05); padding: 8px; border-radius: 3px; border-left: 2px solid #C0392B; display: block; margin: 25px 0; clear: both;',
+    
+    'muted': 'color: #7F8C8D; font-size: 14px; font-family: Arial, sans-serif; font-style: italic; letter-spacing: 0.2px; opacity: 0.85; padding: 4px; display: block; margin: 20px 0; clear: both;',
+    
+    'primary': 'color: #3498DB; font-size: 16px; font-weight: 600; font-family: Arial, sans-serif; letter-spacing: 0.3px; background-color: rgba(52, 152, 219, 0.08); padding: 6px 10px; border-radius: 4px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); display: block; margin: 25px 0; clear: both;',
+    
+    'secondary': 'color: #9B59B6; font-size: 16px; font-weight: 600; font-family: Arial, sans-serif; letter-spacing: 0.3px; background-color: rgba(155, 89, 182, 0.08); padding: 6px 10px; border-radius: 4px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); display: block; margin: 25px 0; clear: both;',
 }
 
 @dataclass
@@ -1294,20 +1358,3 @@ def dict_(data: Dict, **dict_options) -> None:
     style_options = {'style': 'dict'}
     dict_options = {**style_options, **dict_options}
     P.display_dict(data, **dict_options)
-
-# Make these accessible in the public API
-__all__ = ["Printer", "header", "title", "subtitle", "section_divider", "subheader", 
-           "code", "card", "quote", "badge", "data_highlight", "footer",
-           "highlight", "info", "success", "warning", "error", "muted", "primary", "secondary",
-           "dfd", "table", "list_", "dict_"]
-
-
-
-
-
-
-
-
-
-
-
