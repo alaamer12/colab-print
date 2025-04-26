@@ -8,12 +8,14 @@ that support IPython display (like Jupyter notebooks or Google Colab).
 """
 
 import pandas as pd
+import numpy as np  # Added for array examples
 from colab_print import (
     Printer, header, title, subtitle, section_divider, subheader,
     code, card, quote, badge, data_highlight, footer,
     highlight, info, success, warning, error, muted, primary, secondary,
-    dfd, table, list_, dict_
+    dfd, table, list_, dict_, progress
 ) 
+import time
 
 def demo_printer_class():
     """Demo using the Printer class directly."""
@@ -183,6 +185,198 @@ def demo_global_shortcuts():
     card("Custom Card", box_shadow="0 4px 8px rgba(0,0,0,0.2)", border_left="5px solid #673AB7")
 
 
+def demo_progress_bars():
+    """Demo using the progress bar feature."""
+    
+    print("\n--- Progress Bar Examples ---")
+    
+    # Import P for progress updates
+    from colab_print import P
+    
+    # Determined progress bar example (manual style)
+    print("\n--- Determined Progress Bar (Manual) ---")
+    progress_id = progress(total=100, desc="Loading Data", color="#4a6fa5", height="25px")
+    for i in range(101):
+        P.update_progress(progress_id, i)
+        time.sleep(0.01)  # Simulate work being done
+    
+    # TQDM-like functionality (Automatic progress with iterables)
+    print("\n--- TQDM-like Progress (Automatic) ---")
+    
+    # Example 1: With a list - automatically calculates total
+    items = list(range(50))
+    for item in progress(items, desc="Processing List"):
+        time.sleep(0.02)  # Simulate work being done
+    
+    # Example 2: With a custom total
+    items = range(100)
+    for item in progress(items, total=100, desc="Processing Range", color="#2ecc71"):
+        if item % 3 == 0:  # Only process every third item
+            time.sleep(0.02)
+    
+    # Example 3: With a generator that doesn't have len() - undetermined progress
+    def my_generator():
+        for i in range(30):
+            yield i
+    
+    for item in progress(my_generator(), desc="Processing Generator", color="#e74c3c"):
+        time.sleep(0.05)
+        
+    # Traditional undetermined progress example
+    print("\n--- Undetermined Progress Bar ---")
+    progress_id2 = progress(desc="Processing Data", style="progress", color="#8E44AD", height="20px", animated=True)
+    
+    # Simulate some processing work
+    time.sleep(2)
+    
+    # Important: Replace the undetermined progress with a completed one
+    # This prevents the animation from running forever
+    P.update_progress(progress_id2, 100, 100)
+    
+    # Alternative ways to show completion
+    print("\n--- Completing Progress Examples ---")
+    
+    # Style 1: Show partial completion
+    progress_id3 = progress(total=100, desc="Downloading Files", color="#16a085", height="20px")
+    for i in range(0, 65, 5):
+        P.update_progress(progress_id3, i)
+        time.sleep(0.05)
+    success("Download partially completed (65%)")
+    
+    # Style 2: Show error state
+    progress_id4 = progress(total=100, desc="Installing Packages", color="#c0392b", height="20px")
+    for i in range(0, 85, 5):
+        P.update_progress(progress_id4, i)
+        time.sleep(0.05)
+    error("Installation failed at 85%")
+
+
+def demo_enhanced_lists():
+    """Demo showcasing the enhanced list display features."""
+    
+    title("Enhanced List Display Features")
+    subtitle("Showcasing new styling and formatting capabilities")
+    
+    # Create a Printer instance for custom configurations
+    printer = Printer()
+    
+    # --- Simple color-coded nested lists ---
+    header("Color-coded Nested Lists")
+    
+    nested_list = [
+        "Top Level",
+        ["Level 1 - Item 1", "Level 1 - Item 2"],
+        "Another Top Level",
+        ["Level 1 - Item 3", 
+            ["Level 2 - Nested A", "Level 2 - Nested B", 
+                ["Level 3 - Deep Nested", "Level 3 - Another Deep"]
+            ]
+        ],
+        "Final Top Level"
+    ]
+    
+    info("Default color-coded nesting scheme:")
+    list_(nested_list)
+    
+    # --- Custom nesting colors ---
+    subheader("Custom Nesting Colors")
+    
+    # Use warm color scheme (reds to yellows)
+    warm_colors = [
+        "#E53935",  # Red
+        "#F57C00",  # Orange
+        "#FDD835",  # Yellow
+        "#7CB342",  # Light Green
+        "#039BE5",  # Light Blue
+    ]
+    
+    info("Warm color scheme for nesting:")
+    list_(nested_list, nesting_colors=warm_colors)
+    
+    # --- Matrix display ---
+    header("Matrix Display")
+    
+    # Simple matrix (2D array)
+    matrix_data = [
+        [1, 2, 3, 4],
+        [5, 6, 7, 8],
+        [9, 10, 11, 12]
+    ]
+    
+    info("Simple 2D matrix (automatically detected):")
+    list_(matrix_data)
+    
+    # Create a NumPy matrix
+    np_matrix = np.array([
+        [1.2, 3.4, 5.6],
+        [7.8, 9.0, 1.2],
+        [3.4, 5.6, 7.8],
+        [9.0, 1.2, 3.4]
+    ])
+    
+    info("NumPy matrix with auto-detection:")
+    list_(np_matrix)
+    
+    # Force list display for 2D data
+    info("Forcing list display for matrix data:")
+    list_(matrix_data, matrix_mode=False)
+    
+    # --- Array-like objects ---
+    header("Array-like Objects Support")
+    
+    # NumPy array (1D)
+    np_array = np.array([10, 20, 30, 40, 50])
+    info("NumPy 1D array:")
+    list_(np_array)
+    
+    # Pandas Series
+    pd_series = pd.Series([1, 2, 3, 4, 5], index=['a', 'b', 'c', 'd', 'e'])
+    info("Pandas Series:")
+    list_(pd_series)
+    
+    # Creating a pandas DataFrame
+    df = pd.DataFrame({
+        'A': [1, 2, 3],
+        'B': [4, 5, 6]
+    })
+    info("Pandas DataFrame (displayed as matrix):")
+    list_(df)
+    
+    # --- Complex nested structures ---
+    header("Complex Nested Structures")
+    
+    # Combined nested structure with different types
+    complex_structure = [
+        "Mixed Types Example",
+        {"dict_in_list": "value", "nested_dict": {"a": 1, "b": 2}},
+        ["List in list", ["Deeper", np.array([1, 2, 3])]], 
+        pd.Series([10, 20, 30], index=['x', 'y', 'z']),
+        [
+            [1, 2, 3],
+            [4, 5, 6]
+        ]
+    ]
+    
+    info("Complex nested structure with different data types:")
+    list_(complex_structure)
+    
+    # --- Generator and iterator examples ---
+    header("Generators and Iterators")
+    
+    # Generator example
+    def sample_generator(n):
+        for i in range(n):
+            yield f"Generated item {i}"
+    
+    info("Generator output:")
+    list_(sample_generator(5))
+    
+    # Iterator example (map object)
+    map_iterator = map(lambda x: x * 10, range(5))
+    info("Map iterator output:")
+    list_(map_iterator)
+
+
 def main():
     """Main function to run the examples."""
     
@@ -193,6 +387,12 @@ def main():
     
     # Demo the new global shortcut functions
     demo_global_shortcuts()
+    
+    # Demo the enhanced list display features
+    demo_enhanced_lists()
+    
+    # Demo the progress bar feature
+    demo_progress_bars()
     
     print("\n===== END OF DEMO =====")
 
