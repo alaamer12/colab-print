@@ -1,6 +1,6 @@
 [project]
 name = "colab-print"
-version = "0.2.0"
+version = "0.3.0"
 description = "Enhanced display utilities for Jupyter/Colab notebooks with customizable styles"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -69,9 +69,8 @@ include = [
 [tool.hatch.build.targets.wheel]
 include = [
     "/colab_print",
-    "/README.md",            # Include README in wheel for metadata
-    "/LICENSE",              # Include LICENSE in wheel for metadata
-    # example.py is often not included in wheels unless it's part of the package
+    "/README.md",
+    "/LICENSE",
 ]
 packages = ["colab_print"]
 
