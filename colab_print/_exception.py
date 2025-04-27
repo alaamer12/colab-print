@@ -101,6 +101,34 @@ class DataFrameError(ContentTypeError):
         super().__init__(expected_type="pandas.DataFrame", message=message)
 
 
+class CodeError(ContentTypeError):
+    """Exception raised for code display issues."""
+
+    def __init__(self, message="Code content error"):
+        super().__init__(expected_type="str", message=message)
+
+
+class CodeParsingError(CodeError):
+    """Exception raised when parsing code with prompts fails."""
+
+    def __init__(self, line_number=None, message=None):
+        if message is None:
+            message = f"Error parsing code syntax" + (f" at line {line_number}" if line_number else "")
+        super().__init__(message)
+        self.line_number = line_number
+
+
+class SyntaxHighlightingError(CodeError):
+    """Exception raised when applying syntax highlighting fails."""
+
+    def __init__(self, highlighting_mode=None, message=None):
+        if message is None:
+            mode_info = f" with mode '{highlighting_mode}'" if highlighting_mode else ""
+            message = f"Failed to apply syntax highlighting{mode_info}"
+        super().__init__(message)
+        self.highlighting_mode = highlighting_mode
+
+
 class ListError(ContentTypeError):
     """Exception raised for list content issues."""
 
@@ -120,6 +148,13 @@ class ProgressError(ContentTypeError):
 
     def __init__(self, message="Progress bar error"):
         super().__init__(message=message)
+
+
+class MermaidError(ContentTypeError):
+    """Exception raised for mermaid diagram issues."""
+
+    def __init__(self, message="Mermaid diagram error"):
+        super().__init__(expected_type="str", message=message)
 
 
 # Formatting and Parameter Exceptions
