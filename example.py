@@ -13,7 +13,7 @@ from colab_print import (
     Printer, header, title, subtitle, section_divider, subheader,
     code, card, quote, badge, data_highlight, footer,
     highlight, info, success, warning, error, muted, primary, secondary,
-    dfd, table, list_, dict_, progress
+    dfd, table, list_, dict_, progress, mermaid
 ) 
 import time
 
@@ -121,6 +121,14 @@ def demo_global_shortcuts():
     card("This is a card with important content that stands out from the rest of the text")
     quote("The best way to predict the future is to invent it. - Alan Kay")
     code("import pandas as pd\ndf = pd.read_csv('data.csv')\nprint(df.head())")
+    
+    # Code with syntax highlighting (basic)
+    code("""def example_function(param):
+    \"\"\"An example function with a docstring.\"\"\"
+    if param > 10:
+        return param * 2
+    else:
+        return param""", highlighting_mode="block")
     
     # --- Status indicators ---
     print("\n--- Status Indicators ---")
@@ -377,6 +385,352 @@ def demo_enhanced_lists():
     list_(map_iterator)
 
 
+def demo_mermaid_diagrams():
+    """Demo showcasing the Mermaid diagram rendering feature."""
+    
+    title("Mermaid Diagram Examples")
+    subtitle("Rendering diagrams with the new mermaid feature")
+    
+    # --- Flowchart Example ---
+    header("Flowchart Diagram")
+    
+    flow_diagram = """
+    graph TD
+        A[Start] --> B{Is it working?}
+        B -->|Yes| C[Great!]
+        B -->|No| D[Debug]
+        D --> B
+        C --> E[Continue]
+        E --> F[End]
+    """
+    
+    info("Basic flowchart diagram with default theme:")
+    mermaid(flow_diagram)
+    
+    # --- Sequence Diagram Example ---
+    header("Sequence Diagram")
+    
+    sequence_diagram = """
+    sequenceDiagram
+        participant User
+        participant Client
+        participant Server
+        participant Database
+        
+        User->>Client: Submit Form
+        Client->>Server: POST /api/data
+        Server->>Database: Insert Data
+        Database-->>Server: Confirm Insert
+        Server-->>Client: 201 Created
+        Client-->>User: Show Success
+    """
+    
+    info("Sequence diagram with forest theme:")
+    mermaid(sequence_diagram, theme="forest")
+    
+    # --- Class Diagram Example ---
+    header("Class Diagram")
+    
+    class_diagram = """
+    classDiagram
+        class Animal {
+            +String name
+            +int age
+            +makeSound()
+        }
+        class Dog {
+            +fetch()
+        }
+        class Cat {
+            +scratch()
+        }
+        Animal <|-- Dog
+        Animal <|-- Cat
+    """
+    
+    info("Class diagram with dark theme and custom container style:")
+    mermaid(class_diagram, theme="dark", background_color="#282c34", padding="20px", border_radius="8px")
+    
+    # --- Gantt Chart Example ---
+    header("Gantt Chart")
+    
+    gantt_chart = """
+    gantt
+        title Project Timeline
+        dateFormat  YYYY-MM-DD
+        section Planning
+        Requirements     :done,    des1, 2023-01-01, 2023-01-05
+        Design           :active,  des2, 2023-01-06, 2023-01-10
+        section Development
+        Implementation   :         des3, after des2, 2023-01-20
+        Testing          :         des4, after des3, 7d
+        Deployment       :         des5, after des4, 3d
+    """
+    
+    info("Gantt chart with neutral theme:")
+    mermaid(gantt_chart, theme="neutral")
+    
+    # --- State Diagram Example ---
+    header("State Diagram")
+    
+    state_diagram = """
+    stateDiagram-v2
+        [*] --> Still
+        Still --> [*]
+        Still --> Moving
+        Moving --> Still
+        Moving --> Crash
+        Crash --> [*]
+    """
+    
+    info("State diagram with custom styling:")
+    mermaid(state_diagram, border_left="4px solid #3498db")
+    
+    # --- Entity Relationship Diagram ---
+    header("Entity Relationship Diagram")
+    
+    er_diagram = """
+    erDiagram
+        CUSTOMER ||--o{ ORDER : places
+        ORDER ||--|{ LINE-ITEM : contains
+        CUSTOMER }|..|{ DELIVERY-ADDRESS : uses
+    """
+    
+    info("Entity relationship diagram:")
+    mermaid(er_diagram)
+    
+    # --- Using Printer class directly ---
+    header("Using Printer Class")
+    
+    pie_chart = """
+    pie title Product Distribution
+        "Electronics" : 35
+        "Clothing" : 25
+        "Food" : 20
+        "Books" : 15
+        "Other" : 5
+    """
+    
+    info("Using the Printer class to display a pie chart:")
+    printer = Printer()
+    printer.display_mermaid(pie_chart, theme="default", style="card")
+
+def display_mermaid_2():
+
+    # Create a simple diagram file for demonstration
+    import os
+    os.makedirs('examples/diagrams', exist_ok=True)
+
+    with open('examples/diagrams/flow.mmd', 'w') as f:
+        f.write('''
+    graph TD
+        A[Start] --> B{Is it working?}
+        B -->|Yes| C[Great!]
+        B -->|No| D[Debug]
+        D --> B
+    ''')
+
+    # Example 1: Basic diagram display
+    print("Example 1: Basic diagram display")
+    mermaid('''
+    graph TD
+        A --> B
+        A --> C
+        B --> D
+        C --> D
+    ''')
+
+    # Example 2: Reading from a file
+    print("\nExample 2: Reading diagram from a file")
+    mermaid('examples/diagrams/flow.mmd', theme='forest')
+
+    # Example 3: Using custom CSS
+    print("\nExample 3: Applying custom CSS")
+    custom_styles = {
+        '.node rect': 'fill: #f0f8ff; stroke: #4682b4; stroke-width: 2px;',
+        '.node circle': 'fill: #f0f8ff; stroke: #4682b4; stroke-width: 2px;',
+        '.node polygon': 'fill: #f0f8ff; stroke: #4682b4; stroke-width: 2px;',
+        '.node.default > rect': 'fill: #e6f7ff;',
+        '.edgeLabel': 'background-color: #ffffff; padding: 4px; border-radius: 4px;',
+        '.edgePath .path': 'stroke: #4682b4; stroke-width: 2px;'
+    }
+
+    mermaid('''
+    graph TD
+        A[Start] --> B{Decision}
+        B -->|Option 1| C[Result 1]
+        B -->|Option 2| D[Result 2]
+        C --> E[End]
+        D --> E
+    ''', theme='default', custom_css=custom_styles)
+
+    # Example 4: Using printer instance with custom CSS
+    print("\nExample 4: Using Printer instance with custom CSS")
+    printer = Printer()
+
+    # Custom styles focused on dark theme
+    dark_styles = {
+        '.node rect': 'fill: #2d2d2d; stroke: #6a9ec0; stroke-width: 2px;',
+        '.node circle': 'fill: #2d2d2d; stroke: #6a9ec0; stroke-width: 2px;',
+        '.node polygon': 'fill: #2d2d2d; stroke: #6a9ec0; stroke-width: 2px;',
+        '.edgeLabel': 'color: #ffffff; background-color: #2d2d2d; padding: 4px;',
+        '.edgePath .path': 'stroke: #6a9ec0; stroke-width: 2px;',
+        '.label': 'color: #ffffff;',
+        '.nodeLabel': 'color: #ffffff;'
+    }
+
+    printer.display_mermaid('''
+    sequenceDiagram
+        participant User
+        participant System
+        User->>System: Action
+        System-->>User: Response
+        User->>System: Another Action
+        System-->>User: Another Response
+    ''', theme='dark', custom_css=dark_styles)
+
+    print("\nAll examples completed.") 
+
+def demo_enhanced_code_display():
+    """Demo showcasing the enhanced code display features."""
+    
+    title("Enhanced Code Display Features")
+    subtitle("Showcasing Python prompt detection and syntax highlighting")
+    
+    # --- Basic code display ---
+    header("Basic Code Display")
+    
+    simple_code = """def greet(name):
+    \"\"\"Simple greeting function\"\"\"
+    return f"Hello, {name}!"
+
+print(greet("World"))"""
+
+    info("Basic code display with block-level highlighting:")
+    code(simple_code, highlighting_mode="block")
+
+    info("Basic code display with gradient highlighting:")
+    code(simple_code, highlighting_mode="gradient")
+    
+    # --- Python REPL prompt recognition ---
+    header("Python REPL Prompt Recognition")
+    
+    repl_code = """>>> x = 5
+>>> y = 10
+>>> x + y
+15
+>>> for i in range(3):
+...     print(i)
+...     i += 1
+0
+1
+2
+>>> def factorial(n):
+...     if n <= 1:
+...         return 1
+...     else:
+...         return n * factorial(n-1)
+... 
+>>> factorial(5)
+120"""
+
+    info("Code with Python REPL prompts (block highlighting):")
+    code(repl_code, highlighting_mode="block") 
+    
+    info("Code with Python REPL prompts (gradient highlighting):")
+    code(repl_code, highlighting_mode="gradient", 
+         background_color="#f8f9fa")
+    
+    # --- Shell prompt recognition ---
+    header("Shell Prompt Recognition")
+    
+    shell_code = """> ls -la
+> cd /home/user
+> mkdir new_folder
+> python script.py
+Processing...
+Done!
+> echo "Hello World"
+Hello World"""
+
+    info("Code with shell prompts:")
+    code(shell_code, highlighting_mode="block")
+    
+    # --- Mixed prompts and customization ---
+    header("Mixed Prompts and Customization")
+    
+    mixed_code = """# Python example
+>>> import random
+>>> random.randint(1, 100)
+42
+
+# Shell commands
+> pip install pandas
+Successfully installed pandas
+> python
+>>> import pandas as pd
+>>> df = pd.DataFrame({"A": [1, 2, 3]})
+>>> df
+   A
+0  1
+1  2
+2  3"""
+
+    info("Mixed Python and shell prompts with custom styling:")
+    code(mixed_code, 
+         highlighting_mode="block", 
+         background_color="#2d2d2d", 
+         color="#f8f8f2", 
+         font_family="'Fira Code', monospace",
+         border_radius="8px",
+         line_height="1.5")
+    
+    # --- Complex code example ---
+    header("Complex Code Example")
+    
+    complex_code = """# A more complex example with nested indentation
+def process_data(data):
+    \"\"\"Process a data structure with nested elements.\"\"\"
+    if not data:
+        return None
+    
+    results = []
+    for item in data:
+        if isinstance(item, dict):
+            # Process dictionaries
+            processed = {}
+            for key, value in item.items():
+                if isinstance(value, list):
+                    processed[key] = [x * 2 for x in value]
+                else:
+                    processed[key] = str(value).upper()
+            results.append(processed)
+        elif isinstance(item, list):
+            # Process lists
+            results.append([
+                x + 1 if isinstance(x, int) else x
+                for x in item
+            ])
+        else:
+            # Process primitives
+            results.append(item)
+    
+    return results
+"""
+
+    info("Complex code with block-level highlighting to show indentation:")
+    code(complex_code, highlighting_mode="block")
+    
+    # --- Error handling example ---
+    header("Error Cases (Try in a notebook)")
+    
+    info("Examples of error handling (these would raise exceptions in a notebook):")
+    
+    code("""# These would normally raise errors:
+# code(123)  # Not a string
+# code("print('hello')", highlighting_mode="invalid")  # Invalid mode
+# code("print('hello')", background_color="invalid")  # Invalid color""")
+
 def main():
     """Main function to run the examples."""
     
@@ -388,11 +742,18 @@ def main():
     # Demo the new global shortcut functions
     demo_global_shortcuts()
     
+    # Demo the enhanced code display features
+    demo_enhanced_code_display()
+    
     # Demo the enhanced list display features
     demo_enhanced_lists()
     
     # Demo the progress bar feature
     demo_progress_bars()
+    
+    # Demo the mermaid diagram feature
+    demo_mermaid_diagrams()
+    display_mermaid_2()
     
     print("\n===== END OF DEMO =====")
 
