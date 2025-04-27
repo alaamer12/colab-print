@@ -52,13 +52,17 @@ from typing import Callable, Optional, Union, Dict, List, Any, Tuple
 import abc
 import warnings
 import uuid
+import re
+import json
+import html
 from colab_print._exception import (ColabPrintError, TextError, ColorError,
                                     DisplayEnvironmentError, InvalidParameterError,
                                     DisplayMethodError, DisplayUpdateError, ListError, StyleNotFoundError, StyleError,
                                     StyleConflictError, StyleParsingError, TableError, DictError,
                                     IPythonNotAvailableError, ProgressError, ConversionError, ArrayConversionError,
                                     FormattingError, HTMLGenerationError, HTMLRenderingError, DataFrameError,
-                                    MatrixDetectionError, NestedStructureError, ContentTypeError)
+                                    MatrixDetectionError, NestedStructureError, MermaidError, ContentTypeError,
+                                    CodeError, CodeParsingError, SyntaxHighlightingError)
 
 __version__ = "0.3.0"
 __author__ = "alaamer12"
@@ -92,7 +96,7 @@ __all__ = [
     "header", "title", "subtitle", "section_divider", "subheader",
     "code", "card", "quote", "badge", "data_highlight", "footer",
     "highlight", "info", "success", "warning", "error", "muted", "primary", "secondary",
-    "dfd", "table", "list_", "dict_", "progress",
+    "dfd", "table", "list_", "dict_", "progress", "mermaid",
 ]
 __dir__ = sorted(__all__)
 
@@ -218,9 +222,19 @@ class Displayer(abc.ABC):
             
         Returns:
             Formatted CSS string
+            
+        Raises:
+            ConversionError: If there's an error converting Python-style keys to CSS format
         """
-        corrected_styles = {k.replace('_', '-') if '_' in k else k: v for k, v in inline_styles.items()}
-        return "; ".join([f"{key}: {value}" for key, value in corrected_styles.items()])
+        try:
+            corrected_styles = {k.replace('_', '-') if '_' in k else k: v for k, v in inline_styles.items()}
+            return "; ".join([f"{key}: {value}" for key, value in corrected_styles.items()])
+        except Exception as e:
+            raise ConversionError(
+                from_type="Dict[str, str]", 
+                to_type="CSS string", 
+                message=f"Failed to convert inline styles to CSS format: {str(e)}"
+            )
 
     @abc.abstractmethod
     def display(self, *args, **kwargs):
@@ -283,6 +297,285 @@ class TextDisplayer(Displayer):
         except Exception as e:
             raise StyleParsingError(style_value=str(inline_styles),
                                     message=f"Failed to process inline styles: {str(e)}")
+
+    @staticmethod
+    def _display_html(html_content: str) -> None:
+        """
+        Display HTML content safely.
+        
+        Args:
+            html_content: HTML content to display
+            
+        Raises:
+            IPythonNotAvailableError: If IPython environment is not detected
+            HTMLRenderingError: If HTML content cannot be rendered
+        """
+        try:
+            ip_display(HTML(html_content))
+        except NameError:
+            raise IPythonNotAvailableError(
+                "IPython environment not detected. HTML output will not be rendered properly."
+            )
+        except Exception as e:
+            raise HTMLRenderingError(f"Failed to render HTML content: {str(e)}")
+
+
+class CodeDisplayer(Displayer):
+    """Displays code with syntax highlighting and special formatting for Python prompts."""
+    
+    def __init__(self, styles: Dict[str, str]):
+        """
+        Initialize a code displayer with styles.
+        
+        Args:
+            styles: Dictionary of named styles
+        """
+        super().__init__(styles)
+        self.default_colors = [
+            "#3498DB",  # Blue
+            "#9B59B6",  # Purple
+            "#2ECC71",  # Green
+            "#F1C40F",  # Yellow
+            "#E74C3C",  # Red
+            "#1ABC9C",  # Turquoise
+        ]
+    
+    def _parse_python_prompts(self, code: str) -> List[Dict[str, Any]]:
+        """
+        Parse Python code and identify prompt markers (>, >>>, ...).
+        
+        Args:
+            code: Python code text
+            
+        Returns:
+            List of dictionaries containing line info and prompt type
+            
+        Raises:
+            CodeParsingError: If there's an error parsing the code
+        """
+        try:
+            lines = code.split('\n')
+            parsed_lines = []
+            
+            for i, line in enumerate(lines):
+                line_info = {
+                    'number': i + 1,
+                    'text': line,
+                    'prompt_type': None,
+                    'indentation': 0
+                }
+                
+                stripped = line.lstrip()
+                line_info['indentation'] = len(line) - len(stripped)
+                
+                if stripped.startswith('>>> '):
+                    line_info['prompt_type'] = 'primary'
+                    line_info['text'] = stripped[4:]
+                elif stripped.startswith('... '):
+                    line_info['prompt_type'] = 'continuation'
+                    line_info['text'] = stripped[4:]
+                elif stripped.startswith('> '):
+                    line_info['prompt_type'] = 'shell'
+                    line_info['text'] = stripped[2:]
+                
+                parsed_lines.append(line_info)
+            
+            return parsed_lines
+        except Exception as e:
+            raise CodeParsingError(message=f"Failed to parse code: {str(e)}")
+    
+    def _calculate_gradient_color(self, line_number: int, total_lines: int, 
+                                  start_color: str = "#3498DB", end_color: str = "#9B59B6") -> str:
+        """
+        Calculate a gradient color based on the line position.
+        
+        Args:
+            line_number: Current line number (1-based)
+            total_lines: Total number of lines
+            start_color: Starting color in the gradient
+            end_color: Ending color in the gradient
+            
+        Returns:
+            Hex color string
+            
+        Raises:
+            ColorError: If there's an error parsing or calculating colors
+        """
+        try:
+            # Parse start and end colors
+            if not start_color.startswith('#') or not end_color.startswith('#'):
+                raise ColorError(color_value=f"{start_color} or {end_color}", 
+                                message="Colors must be hex values starting with #")
+                
+            start_r = int(start_color[1:3], 16)
+            start_g = int(start_color[3:5], 16)
+            start_b = int(start_color[5:7], 16)
+            
+            end_r = int(end_color[1:3], 16)
+            end_g = int(end_color[3:5], 16)
+            end_b = int(end_color[5:7], 16)
+            
+            # Calculate position in gradient (0 to 1)
+            if total_lines <= 1:
+                position = 0
+            else:
+                position = (line_number - 1) / (total_lines - 1)
+            
+            # Calculate new color
+            r = int(start_r + position * (end_r - start_r))
+            g = int(start_g + position * (end_g - start_g))
+            b = int(start_b + position * (end_b - start_b))
+            
+            return f"#{r:02x}{g:02x}{b:02x}"
+        except ColorError:
+            raise  # Re-raise existing ColorError
+        except Exception as e:
+            raise ColorError(color_value=f"{start_color} to {end_color}", 
+                           message=f"Failed to calculate gradient color: {str(e)}")
+    
+    def _get_block_level_color(self, indentation: int) -> str:
+        """
+        Get a color based on the indentation level.
+        
+        Args:
+            indentation: Number of spaces at the beginning of the line
+            
+        Returns:
+            Hex color string
+        """
+        # Normalize indentation to a block level
+        block_level = indentation // 4  # Assuming 4 spaces per indentation level
+        color_index = block_level % len(self.default_colors)
+        return self.default_colors[color_index]
+    
+    def _apply_syntax_highlighting(self, parsed_lines: List[Dict[str, Any]], 
+                                   highlighting_mode: str = 'block', 
+                                   base_style: str = "") -> str:
+        """
+        Apply syntax highlighting to parsed code lines.
+        
+        Args:
+            parsed_lines: List of dictionaries containing line info
+            highlighting_mode: 'block' for indentation-based coloring, 'gradient' for gradient coloring
+            base_style: Base CSS style string
+            
+        Returns:
+            HTML string with highlighted code
+            
+        Raises:
+            SyntaxHighlightingError: If there's an error applying syntax highlighting
+            InvalidParameterError: If an invalid highlighting mode is provided
+        """
+        try:
+            if highlighting_mode not in ['block', 'gradient']:
+                raise InvalidParameterError(param_name="highlighting_mode",
+                                         expected="'block' or 'gradient'",
+                                         received=highlighting_mode)
+            
+            total_lines = len(parsed_lines)
+            html_lines = []
+            
+            # Start with a pre tag for proper code formatting
+            pre_style = f"font-family: monospace; padding: 15px; border-radius: 5px; {base_style}"
+            html_lines.append(f'<pre style="{pre_style}">')
+            
+            for i, line_info in enumerate(parsed_lines):
+                line_number = line_info['number']
+                text = html.escape(line_info['text'])
+                indentation = line_info['indentation']
+                prompt_type = line_info['prompt_type']
+                
+                # Determine line color based on the highlighting mode
+                if highlighting_mode == 'gradient':
+                    line_color = self._calculate_gradient_color(line_number, total_lines)
+                else:  # block level
+                    line_color = self._get_block_level_color(indentation)
+                
+                # Format based on prompt type
+                if prompt_type == 'primary':
+                    prompt_style = "color: #E67E22; font-weight: bold;"
+                    line_html = f'<span style="{prompt_style}">>>></span> <span style="color: {line_color};">{text}</span>'
+                elif prompt_type == 'continuation':
+                    prompt_style = "color: #E67E22; font-weight: bold;"
+                    line_html = f'<span style="{prompt_style}>...</span> <span style="color: {line_color};">{text}</span>'
+                elif prompt_type == 'shell':
+                    prompt_style = "color: #16A085; font-weight: bold;"
+                    line_html = f'<span style="{prompt_style}">></span> <span style="color: {line_color};">{text}</span>'
+                else:
+                    line_html = f'<span style="color: {line_color};">{text}</span>'
+                
+                html_lines.append(line_html)
+            
+            html_lines.append('</pre>')
+            return '\n'.join(html_lines)
+        except (InvalidParameterError, ColorError):
+            raise  # Re-raise specific exceptions
+        except Exception as e:
+            raise SyntaxHighlightingError(highlighting_mode=highlighting_mode,
+                                        message=f"Failed to apply syntax highlighting: {str(e)}")
+    
+    def display(self, code: str, *, 
+                style: str = 'code_block', 
+                highlighting_mode: str = 'block',
+                background_color: Optional[str] = None,
+                prompt_style: Optional[str] = None,
+                **inline_styles) -> None:
+        """
+        Display code with syntax highlighting and prompt formatting.
+        
+        Args:
+            code: Code to display
+            style: Named style from the available styles
+            highlighting_mode: 'block' for indentation-based coloring or 'gradient' for gradient coloring
+            background_color: Optional background color override
+            prompt_style: Optional style for prompt markers
+            **inline_styles: Additional CSS styles to apply
+            
+        Raises:
+            CodeError: If code is not a string or other code display issues occur
+            StyleNotFoundError: If specified style is not found
+            StyleParsingError: If there's an error parsing inline styles
+            CodeParsingError: If there's an error parsing the code
+            SyntaxHighlightingError: If there's an error applying syntax highlighting
+            HTMLRenderingError: If HTML content cannot be rendered
+        """
+        if not isinstance(code, str):
+            received_type = type(code).__name__
+            raise CodeError(f"Code must be a string, received {received_type}")
+
+        if style not in self.styles:
+            raise StyleNotFoundError(style_name=style,
+                                    message=f"Style '{style}' not found. Available styles: {', '.join(self.styles.keys())}")
+
+        try:
+            # Get the base style
+            base_style = self.styles.get(style)
+            
+            # Process inline styles
+            inline_style_string = self._process_inline_styles(inline_styles)
+            
+            # Combine styles
+            final_style = f"{base_style} {inline_style_string}" if inline_style_string else base_style
+            
+            # Override background color if specified
+            if background_color:
+                final_style = final_style.replace("background-color: #f5f5f5;", f"background-color: {background_color};")
+            
+            # Parse the code for Python prompts
+            parsed_lines = self._parse_python_prompts(code)
+            
+            # Apply syntax highlighting
+            html_content = self._apply_syntax_highlighting(parsed_lines, highlighting_mode, final_style)
+            
+            # Display the HTML
+            self._display_html(html_content)
+            
+        except ValueError as e:
+            raise StyleParsingError(style_value=str(inline_styles), message=f"Error parsing styles: {str(e)}")
+        except (CodeParsingError, SyntaxHighlightingError, ColorError, InvalidParameterError):
+            raise  # Re-raise specific exceptions
+        except Exception as e:
+            raise CodeError(f"Error displaying code: {str(e)}")
 
     @staticmethod
     def _display_html(html_content: str) -> None:
@@ -400,24 +693,53 @@ class TableDisplayer(Displayer):
             
         Returns:
             Tuple of (table_style, th_style, td_style, inline_style_string)
+            
+        Raises:
+            StyleNotFoundError: If specified style is not found
+            StyleConflictError: If there are conflicts between styles
+            ConversionError: If there's an error converting styles
         """
-        # Process inline styles
-        inline_style_string = self._process_inline_styles(inline_styles_dict)
+        try:
+            # Process inline styles
+            inline_style_string = self._process_inline_styles(inline_styles_dict)
 
-        # Get base styles for table components
-        table_style, th_style, td_style = self._get_table_styles(style, width)
+            # Get base styles for table components
+            if style not in self.styles:
+                raise StyleNotFoundError(style_name=style)
+                
+            table_style, th_style, td_style = self._get_table_styles(style, width)
 
-        # Apply custom styles if provided
-        if custom_header_style:
-            th_style = custom_header_style
-        if custom_row_style:
-            td_style = custom_row_style
+            # Check for conflicting styles
+            if custom_header_style and 'text-align:' in custom_header_style and 'text-align:' in th_style:
+                raise StyleConflictError(
+                    style1="default header style",
+                    style2="custom header style",
+                    message="Conflicting text-align properties in header styles"
+                )
+                
+            if custom_row_style and 'text-align:' in custom_row_style and 'text-align:' in td_style:
+                raise StyleConflictError(
+                    style1="default row style",
+                    style2="custom row style",
+                    message="Conflicting text-align properties in row styles"
+                )
 
-        # Add inline styles to the table style
-        if inline_style_string:
-            table_style = f"{table_style} {inline_style_string}"
+            # Apply custom styles if provided
+            if custom_header_style:
+                th_style = custom_header_style
+            if custom_row_style:
+                td_style = custom_row_style
 
-        return table_style, th_style, td_style, inline_style_string
+            # Add inline styles to the table style
+            if inline_style_string:
+                table_style = f"{table_style} {inline_style_string}"
+
+            return table_style, th_style, td_style, inline_style_string
+            
+        except (StyleNotFoundError, StyleConflictError, ConversionError):
+            raise
+        except Exception as e:
+            raise StyleError(f"Error processing table styles: {str(e)}")
 
     def _build_table_html(self, headers: List[str], rows: List[List[Any]],
                           table_style: str, th_style: str, td_style: str,
@@ -436,22 +758,31 @@ class TableDisplayer(Displayer):
             
         Returns:
             List of HTML elements for the complete table
+            
+        Raises:
+            HTMLGenerationError: If HTML generation fails
         """
-        html = [f'<table style="{table_style}">']
+        try:
+            html = [f'<table style="{table_style}">']
 
-        # Add caption if provided
-        html.extend(self._generate_table_caption(caption, inline_style_string))
+            # Add caption if provided
+            html.extend(self._generate_table_caption(caption, inline_style_string))
 
-        # Add header row
-        html.extend(self._generate_table_header(headers, th_style))
+            # Add header row
+            html.extend(self._generate_table_header(headers, th_style))
 
-        # Add data rows
-        html.extend(self._generate_table_rows(rows, td_style))
+            # Add data rows
+            html.extend(self._generate_table_rows(rows, td_style))
 
-        # Close the table
-        html.append('</table>')
+            # Close the table
+            html.append('</table>')
 
-        return html
+            return html
+        except Exception as e:
+            raise HTMLGenerationError(
+                component="table", 
+                message=f"Failed to generate table HTML: {str(e)}"
+            )
 
     @staticmethod
     def _display_html(html: List[str], headers: List[str], rows: List[List[Any]]) -> None:
@@ -600,26 +931,52 @@ class DFDisplayer(Displayer):
             
         Returns:
             Prepared DataFrame copy
+            
+        Raises:
+            FormattingError: If there's an error formatting the DataFrame
+            DataFrameError: If there's an issue with the DataFrame structure
         """
-        df_copy = df.copy()
+        try:
+            # Validate inputs
+            if max_rows is not None and max_rows <= 0:
+                raise FormattingError("max_rows must be a positive integer")
+                
+            if max_cols is not None and max_cols <= 0:
+                raise FormattingError("max_cols must be a positive integer")
+                
+            if precision < 0:
+                raise FormattingError("precision must be a non-negative integer")
+            
+            if not isinstance(df, pd.DataFrame):
+                raise DataFrameError(f"Expected pandas DataFrame, got {type(df).__name__}")
+            
+            df_copy = df.copy()
 
-        # Handle row limits
-        if max_rows is not None and len(df_copy) > max_rows:
-            half_rows = max_rows // 2
-            df_copy = pd.concat([df_copy.head(half_rows), df_copy.tail(half_rows)])
+            # Handle row limits
+            if max_rows is not None and len(df_copy) > max_rows:
+                half_rows = max_rows // 2
+                df_copy = pd.concat([df_copy.head(half_rows), df_copy.tail(half_rows)])
 
-        # Handle column limits
-        if max_cols is not None and len(df_copy.columns) > max_cols:
-            half_cols = max_cols // 2
-            first_cols = df_copy.columns[:half_cols].tolist()
-            last_cols = df_copy.columns[-half_cols:].tolist()
-            df_copy = df_copy[first_cols + last_cols]
+            # Handle column limits
+            if max_cols is not None and len(df_copy.columns) > max_cols:
+                half_cols = max_cols // 2
+                first_cols = df_copy.columns[:half_cols].tolist()
+                last_cols = df_copy.columns[-half_cols:].tolist()
+                df_copy = df_copy[first_cols + last_cols]
 
-        # Format numbers
-        for col in df_copy.select_dtypes(include=['float']).columns:
-            df_copy[col] = df_copy[col].apply(lambda x: f"{x:.{precision}f}" if pd.notnull(x) else "")
+            # Format numbers
+            for col in df_copy.select_dtypes(include=['float']).columns:
+                try:
+                    df_copy[col] = df_copy[col].apply(lambda x: f"{x:.{precision}f}" if pd.notnull(x) else "")
+                except Exception as e:
+                    raise FormattingError(f"Error formatting column '{col}': {str(e)}")
 
-        return df_copy
+            return df_copy
+            
+        except (FormattingError, DataFrameError):
+            raise
+        except Exception as e:
+            raise FormattingError(f"Error preparing DataFrame: {str(e)}")
 
     @staticmethod
     def _generate_table_caption(caption: Optional[str], cell_style_base: str) -> List[str]:
@@ -1063,10 +1420,27 @@ class ListDisplayer(Displayer):
         Returns:
             True if the object is array-like, False otherwise
         """
+        # Quick checks for common Python types
+        if isinstance(obj, (list, tuple)):
+            return True
+            
+        if isinstance(obj, (str, dict, bytes, bool, int, float)):
+            return False
+        
+        # Check common array library types by name
+        obj_type = str(type(obj))
+        if any(lib in obj_type for lib in ['numpy', 'pandas', 'torch', 'tensorflow', 'tf.', 'jax']):
+            return True
+            
         # Check for common array-like interfaces
-        if hasattr(obj, '__iter__') and not isinstance(obj, (str, dict, bytes)):
+        if hasattr(obj, '__iter__'):
             # Try to access basic sequence operations
             try:
+                # Check if object supports indexing
+                if hasattr(obj, '__getitem__'):
+                    return True
+                    
+                # Check if it has a length
                 len(obj)
                 return True
             except (TypeError, AttributeError):
@@ -1074,12 +1448,16 @@ class ListDisplayer(Displayer):
 
             # Check if it's a generator or iterator without len()
             try:
+                # Just getting the iterator is enough to confirm it's iterable
                 iter(obj)
-                # Convert generators/iterators to list for display
                 return True
             except TypeError:
                 pass
-
+                
+        # Check for array or buffer protocol
+        if hasattr(obj, '__array__') or hasattr(obj, 'buffer_info'):
+            return True
+            
         return False
 
     def _convert_to_list(self, obj: Any) -> List:
@@ -1096,29 +1474,59 @@ class ListDisplayer(Displayer):
             ArrayConversionError: If array-like object conversion fails
         """
         try:
+            # Already a list or tuple, return as is
+            if isinstance(obj, (list, tuple)):
+                return obj
+                
             # Handle NumPy arrays specifically
-            if str(type(obj)).startswith("<class 'numpy."):
-                # For NumPy arrays, convert to nested lists
+            if 'numpy' in str(type(obj)):
                 try:
-                    return obj.tolist()
-                except AttributeError:
+                    return obj.tolist() if hasattr(obj, 'tolist') else list(obj)
+                except (AttributeError, TypeError):
                     return list(obj)
 
             # Handle pandas Series or DataFrame
-            if str(type(obj)).startswith("<class 'pandas."):
+            if 'pandas' in str(type(obj)):
                 try:
                     return obj.values.tolist() if hasattr(obj, 'values') else list(obj)
-                except AttributeError:
+                except (AttributeError, TypeError):
+                    return list(obj)
+
+            # Handle torch tensors
+            if 'torch' in str(type(obj)):
+                try:
+                    return obj.cpu().numpy().tolist() if hasattr(obj, 'numpy') else list(obj)
+                except (AttributeError, TypeError):
+                    return list(obj)
+                    
+            # Handle tensorflow tensors
+            if 'tensorflow' in str(type(obj)) or 'tf.' in str(type(obj)):
+                try:
+                    return obj.numpy().tolist() if hasattr(obj, 'numpy') else list(obj)
+                except (AttributeError, TypeError):
+                    return list(obj)
+
+            # Handle JAX arrays
+            if 'jax' in str(type(obj)):
+                try:
+                    return obj.tolist() if hasattr(obj, 'tolist') else list(obj)
+                except (AttributeError, TypeError):
                     return list(obj)
 
             # Handle other array-like objects
-            if self._is_array_like(obj) and not isinstance(obj, (list, tuple)):
+            if self._is_array_like(obj):
                 try:
+                    # Try direct conversion
                     return list(obj)
                 except (TypeError, ValueError):
-                    return [str(obj)]
-
-            return obj if isinstance(obj, (list, tuple)) else [obj]
+                    # Last resort: try to convert items one by one
+                    result = []
+                    for item in obj:
+                        result.append(item)
+                    return result
+            
+            # Single item, not an array-like - wrap in a list
+            return [obj]
 
         except Exception as e:
             obj_type = type(obj).__name__
@@ -1377,18 +1785,17 @@ class ListDisplayer(Displayer):
             
         Raises:
             ListError: If the input cannot be converted or is invalid
+            ContentTypeError: If the input is of an incompatible type
         """
         try:
             display_items = self._convert_to_list(items)
+            return display_items
         except ArrayConversionError as e:
-            raise ListError(f"Cannot display object as list: {str(e)}")
-
-        # Validate input after conversion
-        if not isinstance(display_items, (list, tuple)):
-            received_type = type(display_items).__name__
-            raise ListError(f"Input must be a list, tuple, or array-like object, received: {received_type}")
-
-        return display_items
+            # Provide more helpful error message
+            raise ListError(f"Failed to convert array-like object to displayable format: {str(e)}. "
+                           f"The object type '{type(items).__name__}' is supported but an error occurred during conversion.")
+        except Exception as e:
+            raise ListError(f"Unable to display object of type '{type(items).__name__}': {str(e)}")
 
     def _determine_matrix_mode(self, items: Union[List, Tuple], matrix_mode: Optional[bool]) -> bool:
         """
@@ -1539,6 +1946,175 @@ class DictDisplayer(Displayer):
             )
         except Exception as e:
             raise HTMLRenderingError(f"Failed to render dictionary HTML: {str(e)}") from e
+
+
+class MermaidDisplayer(Displayer):
+    """Displays Mermaid diagrams using the Mermaid JavaScript library."""
+
+    def display(self, diagram: str, *, 
+                style: str = 'default', 
+                theme: str = 'default',
+                custom_css: Optional[Dict[str, str]] = None,
+                **inline_styles) -> None:
+        """
+        Display a Mermaid diagram.
+        
+        Args:
+            diagram: The Mermaid diagram definition/code or a file path
+            style: Named style from the available styles
+            theme: Mermaid theme ('default', 'forest', 'dark', 'neutral')
+            custom_css: Optional dictionary mapping Mermaid CSS selectors to style properties
+            **inline_styles: Additional CSS styles to apply to the container
+            
+        Raises:
+            MermaidError: If there's an issue with the diagram
+            StyleNotFoundError: If specified style is not found
+            InvalidParameterError: If invalid parameters are provided
+            DisplayEnvironmentError: If display environment is not available
+            DisplayMethodError: If there's an issue with the display method
+        """
+        try:
+            # Check if diagram is a file path and attempt to read from file
+            diagram_content = self._read_diagram_from_path_or_use_directly(diagram)
+            
+            if not isinstance(diagram_content, str):
+                received_type = type(diagram_content).__name__
+                raise MermaidError(f"Diagram must be a string, received {received_type}")
+
+            if style not in self.styles:
+                raise StyleNotFoundError(style_name=style)
+                
+            if theme not in ['default', 'forest', 'dark', 'neutral']:
+                raise InvalidParameterError("theme", 
+                                        "one of: 'default', 'forest', 'dark', 'neutral'", 
+                                        received=theme)
+
+            base_style = self.styles.get(style)
+            inline_style_string = self._process_inline_styles(inline_styles)
+            container_style = f"{base_style} {inline_style_string}" if inline_style_string else base_style
+            
+            # Create HTML with Mermaid diagram
+            html_content = self._generate_mermaid_html(diagram_content, container_style, theme, custom_css)
+            
+            # Display the diagram
+            self._display_html(html_content)
+        except (MermaidError, StyleNotFoundError, InvalidParameterError, 
+                DisplayEnvironmentError, HTMLGenerationError, ConversionError):
+            # Pass through specific exceptions
+            raise
+        except Exception as e:
+            # Wrap other exceptions with DisplayMethodError
+            raise DisplayMethodError(
+                method_name="display_mermaid", 
+                message=f"Error displaying Mermaid diagram: {str(e)}"
+            )
+    
+    @staticmethod
+    def _read_diagram_from_path_or_use_directly(diagram_input: str) -> str:
+        """
+        Check if input is a file path and read content if it is.
+        
+        Args:
+            diagram_input: Either a Mermaid diagram string or a file path
+            
+        Returns:
+            The Mermaid diagram content
+            
+        Raises:
+            MermaidError: If there's an issue reading the file
+        """
+        # Skip empty strings
+        if not diagram_input or not diagram_input.strip():
+            return diagram_input
+            
+        # Check if diagram looks like a file path
+        if (diagram_input.endswith('.md') or 
+            diagram_input.endswith('.mmd') or 
+            diagram_input.endswith('.mermaid') or
+            ('/' in diagram_input or '\\' in diagram_input)):
+            try:
+                with open(diagram_input, 'r', encoding='utf-8') as f:
+                    return f.read()
+            except Exception as e:
+                # If it looks like a file path but reading fails, assume it's either
+                # a diagram with slashes, or raise an error if it clearly ends with a file extension
+                if (diagram_input.endswith('.md') or 
+                    diagram_input.endswith('.mmd') or 
+                    diagram_input.endswith('.mermaid')):
+                    raise MermaidError(f"Failed to read Mermaid diagram from file: {diagram_input}. Error: {str(e)}")
+                # Otherwise, treat it as a diagram string
+                return diagram_input
+        
+        # If not a file path, return the original string
+        return diagram_input
+
+    def _generate_mermaid_html(self, diagram: str, container_style: str, theme: str, 
+                               custom_css: Optional[Dict[str, str]] = None) -> str:
+        """
+        Generate HTML for displaying a Mermaid diagram.
+        
+        Args:
+            diagram: The Mermaid diagram definition/code
+            container_style: CSS style for the container
+            theme: Mermaid theme
+            custom_css: Optional dictionary mapping Mermaid CSS selectors to style properties
+            
+        Returns:
+            HTML content string
+        """
+        diagram_id = f"mermaid_{str(uuid.uuid4()).replace('-', '')}"
+        
+        # Prepare custom CSS if provided
+        custom_css_string = ""
+        if custom_css and isinstance(custom_css, dict):
+            css_rules = []
+            for selector, properties in custom_css.items():
+                # Add a proper prefix for the current diagram if it doesn't already target .mermaid
+                if not selector.startswith('.mermaid'):
+                    prefixed_selector = f"#{diagram_id} {selector}"
+                else:
+                    prefixed_selector = f"#{diagram_id}{selector[8:]}"
+                
+                css_rules.append(f"{prefixed_selector} {{ {properties} }}")
+            
+            custom_css_string = f"<style>{' '.join(css_rules)}</style>"
+        
+        html = f"""
+        <div style="{container_style}">
+            {custom_css_string}
+            <div class="mermaid" id="{diagram_id}">
+            {diagram}
+            </div>
+            <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+            <script>
+                // Initialize Mermaid with specified theme
+                mermaid.initialize({{ startOnLoad: true, theme: '{theme}' }});
+                mermaid.run();
+            </script>
+        </div>
+        """
+        return html
+
+    @staticmethod
+    def _display_html(html_content: str) -> None:
+        """
+        Display HTML content safely.
+        
+        Args:
+            html_content: HTML content to display
+            
+        Raises:
+            IPythonNotAvailableError: If IPython environment is not detected
+            HTMLRenderingError: If HTML content cannot be rendered
+        """
+        try:
+            ip_display(HTML(html_content))
+        except NameError:
+            raise IPythonNotAvailableError(
+                "IPython environment not detected. Mermaid diagram will not be rendered properly."
+            )
+        except Exception as e:
+            raise HTMLRenderingError(f"Failed to render Mermaid diagram: {str(e)}")
 
 
 class ProgressDisplayer(Displayer):
@@ -1963,10 +2539,12 @@ class Printer:
 
             # Create displayers for different content types
             self.text_displayer = TextDisplayer(self.styles)
+            self.code_displayer = CodeDisplayer(self.styles)
             self.table_displayer = TableDisplayer(self.styles)
             self.list_displayer = ListDisplayer(self.styles)
             self.dict_displayer = DictDisplayer(self.styles)
             self.progress_displayer = ProgressDisplayer(self.styles)
+            self.mermaid_displayer = MermaidDisplayer(self.styles)
         except Exception as e:
             raise ColabPrintError(f"Error initializing Printer: {str(e)}")
 
@@ -2169,7 +2747,7 @@ class Printer:
                      **inline_styles) -> None:
         """
         Display a dictionary as an HTML definition list.
-
+        
         Args:
             data: The dictionary to display
             style: Named style for the definition list container
@@ -2199,6 +2777,54 @@ class Printer:
         except Exception as e:
             # Wrap unknown exceptions
             raise DictError(f"Error displaying dictionary: {str(e)}")
+
+    def display_mermaid(self, diagram: str, *, 
+                       style: str = 'default', 
+                       theme: str = 'default',
+                       custom_css: Optional[Dict[str, str]] = None,
+                       **inline_styles) -> None:
+        """
+        Display a Mermaid diagram.
+        
+        Args:
+            diagram: Mermaid diagram definition or file path to a Mermaid diagram file
+            style: Named style from available styles for the container
+            theme: Mermaid theme ('default', 'forest', 'dark', 'neutral')
+            custom_css: Optional dictionary mapping Mermaid CSS selectors to style properties
+            **inline_styles: Additional CSS styles to apply to the container
+            
+        Raises:
+            MermaidError: If there's an issue with the diagram or diagram file
+            StyleNotFoundError: If specified style is not found
+            DisplayEnvironmentError: If display environment is not available
+            InvalidParameterError: If theme is not valid
+            
+        Examples:
+            # Display a Mermaid diagram from a string
+            printer.display_mermaid('''
+            graph TD;
+                A-->B;
+                A-->C;
+                B-->D;
+                C-->D;
+            ''')
+            
+            # Display a Mermaid diagram from a file
+            printer.display_mermaid('path/to/diagram.mmd', theme='dark')
+            
+            # Apply custom CSS styles to Mermaid elements
+            printer.display_mermaid(diagram, custom_css={
+                '.node rect': 'fill: #f9f9f9; stroke: #333; stroke-width: 2px;',
+                '.edgeLabel': 'background-color: white; padding: 2px;'
+            })
+        """
+        self.mermaid_displayer.display(
+            diagram,
+            style=style,
+            theme=theme,
+            custom_css=custom_css,
+            **inline_styles
+        )
 
     def add_style(self, name: str, style_definition: str) -> None:
         """
@@ -2391,6 +3017,57 @@ class Printer:
         except Exception as e:
             raise DisplayUpdateError(element_id=progress_id, message=f"Failed to update progress bar: {str(e)}") from e
 
+    def display_code(self, code: str, *,
+                style: str = 'code_block',
+                highlighting_mode: str = 'block',
+                background_color: Optional[str] = None,
+                prompt_style: Optional[str] = None,
+                **inline_styles) -> None:
+        """
+        Display code with syntax highlighting and prompt formatting.
+        
+        Args:
+            code: Code to display
+            style: Named style from available styles
+            highlighting_mode: 'block' for indentation-based coloring or 'gradient' for gradient coloring
+            background_color: Optional background color override
+            prompt_style: Optional style for prompt markers
+            **inline_styles: Additional CSS styles to apply
+            
+        Raises:
+            CodeError: If code is not a string or other code display issues occur
+            StyleNotFoundError: If specified style is not found
+            StyleParsingError: If there's an error parsing inline styles
+            CodeParsingError: If there's an error parsing the code
+            SyntaxHighlightingError: If there's an error applying syntax highlighting
+            HTMLRenderingError: If HTML content cannot be rendered
+        """
+        try:
+            # Validate inputs
+            if not isinstance(code, str):
+                raise CodeError(f"Code must be a string, received {type(code).__name__}")
+
+            if style not in self.styles:
+                available_styles = ', '.join(list(self.styles.keys())[:10]) + "..." if len(
+                    self.styles) > 10 else ', '.join(self.styles.keys())
+                raise StyleNotFoundError(style_name=style,
+                                        message=f"Style '{style}' not found. Available styles: {available_styles}")
+
+            self.code_displayer.display(
+                code, 
+                style=style, 
+                highlighting_mode=highlighting_mode,
+                background_color=background_color,
+                prompt_style=prompt_style,
+                **inline_styles
+            )
+        except (CodeError, StyleNotFoundError, StyleParsingError, DisplayEnvironmentError) as e:
+            # Pass through known exceptions
+            raise
+        except Exception as e:
+            # Wrap unknown exceptions
+            raise CodeError(f"Error displaying code: {str(e)}") from e
+
 
 # Add a function to check if we're in an IPython environment
 def is_in_notebook() -> bool:
@@ -2473,13 +3150,13 @@ def subheader(text: str, **override_styles) -> None:
 # Content display shortcuts - specialized content formatting
 def code(text: str, **override_styles) -> None:
     """
-    Display text as a code block with monospaced font and background.
+    Display text as a code block with monospaced font, background, and syntax highlighting.
     
     Args:
         text: Code text to display
-        **override_styles: Override any CSS style properties
+        **override_styles: Override any CSS style properties or configure highlighting options
     """
-    P.display(text, style='code_block', **override_styles)
+    P.display_code(text, style='code_block', **override_styles)
 
 
 def card(text: str, **override_styles) -> None:
@@ -2786,3 +3463,41 @@ def _progress_iter(iterable, *,
         # Ensure the progress bar shows the error state
         P.update_progress(progress_id, i + 1, total)  # Show partial completion
         raise
+
+
+def mermaid(diagram: str, *,
+           theme: str = 'default',
+           style: str = 'default',
+           custom_css: Optional[Dict[str, str]] = None,
+           **inline_styles) -> None:
+    """
+    Display a Mermaid diagram with optional custom styling.
+    
+    Args:
+        diagram: Mermaid diagram definition or file path to a Mermaid diagram file
+        theme: Mermaid theme ('default', 'forest', 'dark', 'neutral')
+        style: Named style for the container from available styles
+        custom_css: Optional dictionary mapping Mermaid CSS selectors to style properties
+        **inline_styles: Additional CSS styles to apply to the container
+        
+    Examples:
+        # Display a simple diagram
+        mermaid('''
+        graph TD;
+            A-->B;
+            A-->C;
+            B-->D;
+            C-->D;
+        ''')
+        
+        # Read from a file
+        mermaid('diagrams/flow.mmd', theme='dark')
+        
+        # Apply custom CSS
+        mermaid(diagram, custom_css={
+            '.node rect': 'fill: #f9f9f9; stroke: #333; stroke-width: 2px;',
+            '.edgeLabel': 'background-color: white; padding: 2px;'
+        })
+    """
+    P = Printer()
+    P.display_mermaid(diagram, style=style, theme=theme, custom_css=custom_css, **inline_styles)
