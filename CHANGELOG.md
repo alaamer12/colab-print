@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2025-04-30
+
+### Added
+- Progress bar functionality with full tqdm compatibility
+- Support for both determined and undetermined progress states
+- New `progress()` and `progress_iter()` functions for easy progress tracking
+- Enhanced exception hierarchy with detailed error context and improved tracebacks
+- Advanced ListDisplay capabilities for rendering nested structures, matrices, and array-like objects
+- Automatic detection and optimized display for NumPy arrays and Pandas data structures
+
+### Improved
+- Comprehensive input validation across all display methods
+- Better style override mechanisms with more intuitive syntax
+- Consistent error handling throughout the codebase
+- Enhanced style inheritance for nested content elements
+- More robust color processing and validation
+
+### Changed
+- Standardized display behavior across different content types
+- Redesigned progress visualization with animations
+- Updated all display components to properly propagate and handle exceptions
+- Enhanced style definitions with better visual consistency
+
+### Fixed
+- Inconsistent error handling in various displayer components
+- Improved exception context preservation for better debugging
+- Standardized HTML generation and rendering process
+
 ## [0.2.0] - 2025-04-25
 
 ### Added

@@ -60,7 +60,7 @@ from colab_print._exception import (ColabPrintError, TextError, ColorError,
                                     FormattingError, HTMLGenerationError, HTMLRenderingError, DataFrameError,
                                     MatrixDetectionError, NestedStructureError, ContentTypeError)
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 __author__ = "alaamer12"
 __email__ = "ahmedmuhmmed239@gmail.com"
 __license__ = "MIT"
@@ -2711,7 +2711,7 @@ def progress(iterable=None, *,
     """
     if iterable is not None:
         # Use as a tqdm-like wrapper
-        return progress_iter(iterable, total=total, desc=desc, style=style,
+        return _progress_iter(iterable, total=total, desc=desc, style=style,
                              color=color, height=height, animated=animated,
                              **inline_styles)
 
@@ -2727,7 +2727,7 @@ def progress(iterable=None, *,
     )
 
 
-def progress_iter(iterable, *,
+def _progress_iter(iterable, *,
                   total: Optional[int] = None,
                   desc: str = "",
                   style: str = "progress",
@@ -2735,22 +2735,6 @@ def progress_iter(iterable, *,
                   height: str = "20px",
                   animated: bool = True,
                   **inline_styles) -> Any:
-    """
-    Wraps an iterable with a progress bar, similar to tqdm.
-    
-    Args:
-        iterable: The iterable to track progress over
-        total: Total length (calculated from iterable if not provided)
-        desc: Description text to display with the progress bar
-        style: Named style from available styles
-        color: Color of the progress bar
-        height: Height of the progress bar
-        animated: Whether to animate the progress bar
-        **inline_styles: Additional CSS styles to apply
-        
-    Returns:
-        Generator that yields items from the iterable while updating progress
-    """
     # Determine total if not provided
     if total is None:
         try:
