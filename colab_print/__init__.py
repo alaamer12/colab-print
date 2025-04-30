@@ -15,6 +15,7 @@ Features:
 - 📏 Smart row/column limiting for large DataFrames
 - 🔍 Targeted highlighting for specific rows, columns, or individual cells
 - 🔄 Graceful fallbacks when used outside of notebook environments
+- 🔘 Interactive buttons with customizable callbacks and event handling
 
 Content Display Methods:
 - text: printer.display(text, style="default", **inline_styles)
@@ -24,6 +25,7 @@ Content Display Methods:
 - dictionaries: printer.display_dict(data, style="default", **options)
 - progress: printer.display_progress(total, desc="", style="default", **options)
 - mermaid: printer.display_mermaid(diagram_code, style="default", **options)
+- buttons: printer.display_button(text, on_click=None, style="default", **options)
 
 
 Convenience Functions:
@@ -32,9 +34,10 @@ Convenience Functions:
 - Feedback display: progress(), data_highlight(), error(), warning(), success(), etc.
 - Mermaid diagrams: mermaid(diagram_code)
 - Code display: code(code_string)
+- Interactive elements: button(text, on_click=None)
 
 Basic Usage:
-    from colab_print import Printer, header, success, dfd
+    from colab_print import Printer, header, success, dfd, button
     
     # Object-oriented style
     printer = Printer()
@@ -47,6 +50,13 @@ Basic Usage:
     # Content-specific display
     df = pandas.DataFrame(...)
     dfd(df, highlight_cols=["important_column"], max_rows=20)
+    
+    # Interactive button with callback
+    def on_click():
+        print("Button clicked!")
+        return "__UPDATE_BUTTON_TEXT__: Clicked!"
+    
+    button_id = button("Click Me", on_click=on_click)
 
 See [example.py](https://github.com/alaamer12/colab-print/blob/main/example.py) for complete style list and customization options.
 """
@@ -56,7 +66,7 @@ from colab_print.functions import (code, dfd, card, info, badge, dict_, error,
                                    list_, muted, quote, table, title, header,
                                    footer, mermaid, primary, success, warning,
                                    progress, data_highlight, secondary, section_divider,
-                                   highlight, subheader, subtitle)
+                                   highlight, subheader, subtitle, button)
 
 from colab_print.utilities import (DEFAULT_THEMES, SPECIAL_STYLES, VALID_ANIMATIONS,
                                    process_animation_class, is_in_notebook,
@@ -102,6 +112,9 @@ __keywords__ = ["jupyter",
                 "jax",
                 "theme-customization",
                 "animation",
+                "buttons",
+                "callbacks",
+                "event-handling",
                 ]
 __description__ = "Enhanced display utilities for Jupyter/Colab notebooks."
 __url__ = "https://github.com/alaamer12/colab-print"
@@ -117,7 +130,7 @@ __all__ = [
     "list_", "muted", "quote", "table", "title", "header",
     "footer", "mermaid", "primary", "success", "warning",
     "progress", "data_highlight", "secondary", "section_divider",
-    "highlight", "subheader", "subtitle",
+    "highlight", "subheader", "subtitle", "button",
 
     # Utilities
     "process_animation_class", "is_in_notebook",

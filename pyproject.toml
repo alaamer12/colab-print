@@ -38,6 +38,9 @@ keywords = ["jupyter",
                 "jax",
                 "theme-customization",
                 "animation",
+                "buttons",
+                "callbacks",
+                "event-handling",
             ]
 authors = [
     { name = "alaamer12", email = "ahmedmuhmmed239@gmail.com" }
