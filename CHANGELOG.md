@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2025-05-05
+
+### Added
+- Introduced comprehensive animation support throughout the library using Animate.css under the hood
+- Support for animation configuration on the run through the string parameter (`animate=None` by default), which processes the string value to follow Animate.css pattern
+- Better example.py with enhanced demonstrations showcasing all features
+
+### Improved
+- More robust exception handling across all display components
+- Better code refactoring resulting in cleaner, more maintainable codebase
+- Enhanced function docstrings with more detailed parameter descriptions and usage examples
+
 ## [0.3.0] - 2025-04-30
 
 ### Added
