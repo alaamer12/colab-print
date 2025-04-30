@@ -1,6 +1,6 @@
 # Text display shortcuts - primary display styles
 from colab_print._core import Printer
-from typing import Optional, Any, List, Dict, Union
+from typing import Optional, Any, List, Dict, Union, Callable, Literal
 import pandas as pd
 
 P = Printer()
@@ -11,7 +11,7 @@ __all__ = [
     "code", "card", "quote", "badge", "data_highlight", "footer",
     "highlight", "info", "success", "warning", "error", "muted",
     "primary", "secondary", "dfd", "table", "list_", "dict_",
-    "progress", "mermaid"
+    "progress", "mermaid", "button"
 ]
 
 
@@ -472,3 +472,69 @@ def mermaid(diagram: str, *,
         ... })
     """
     P.display_mermaid(diagram, style=style, theme=theme, custom_css=custom_css, **inline_styles)
+
+
+def button(text: str, *,
+           on_click: Optional[Callable] = None,
+           style: str = "interactive_button",
+           status_display: bool = True,
+           hover_effect: bool = True,
+           width: str = 'auto',
+           height: str = 'auto',
+           enabled: bool = True,
+           animate: Optional[str] = None,
+           position: Literal['left', 'mid', 'right'] = 'left',
+           **inline_styles) -> str:
+    """
+    Display an interactive button with customizable events and Python callbacks.
+    
+    Args:
+        text: Button text
+        on_click: Python function to call when button is clicked
+        style: Named style from available styles
+        status_display: Whether to show a status display area below button
+        hover_effect: Whether to enable hover effects
+        width: Button width (CSS value)
+        height: Button height (CSS value)
+        enabled: Whether the button is initially enabled
+        animate: Animation effect from Animate.css (e.g., 'fadeIn', 'bounceOut')
+        position: Button alignment ('left', 'mid', 'right')
+        **inline_styles: Additional CSS styles to apply
+    
+    Returns:
+        Button ID that can be used with update_button_text() and enable_button()
+    
+    Examples:
+        >>> def on_button_click():
+        ...     print("Button was clicked!")
+        ...     return "__UPDATE_BUTTON_TEXT__: Button Clicked!"
+        >>> 
+        >>> # Create a button with a click handler
+        >>> btn_id = button("Click Me", on_click=on_button_click)
+        >>> 
+        >>> # Update button text programmatically
+        >>> from colab_print import P
+        >>> P.update_button_text(btn_id, "New Button Text")
+        >>> 
+        >>> # Disable the button
+        >>> P.enable_button(btn_id, False)
+    
+    Notes:
+        - To update button text from a callback, return a string with the format:
+          "__UPDATE_BUTTON_TEXT__: New Text"
+        - Button callbacks only work in Google Colab environment
+        - Status display shows events like clicks, hover, and callback results
+    """
+    return P.display_button(
+        text,
+        on_click=on_click,
+        style=style,
+        status_display=status_display,
+        hover_effect=hover_effect,
+        width=width,
+        height=height,
+        enabled=enabled,
+        animate=animate,
+        position=position,
+        **inline_styles
+    )

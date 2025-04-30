@@ -1,7 +1,7 @@
 # noinspection PyUnresolvedReferences
 from IPython.display import display as ip_display, HTML, Javascript
 import pandas as pd
-from typing import Callable, Optional, Union, Dict, List, Any, Tuple
+from typing import Callable, Optional, Union, Dict, List, Any, Tuple, Literal
 import abc
 import warnings
 import uuid
@@ -14,7 +14,8 @@ from colab_print._exception import (ColabPrintError, TextError, ColorError,
                                     IPythonNotAvailableError, ProgressError, ConversionError, ArrayConversionError,
                                     FormattingError, HTMLGenerationError, HTMLRenderingError, DataFrameError,
                                     MatrixDetectionError, NestedStructureError, MermaidError, CodeError,
-                                    CodeParsingError, SyntaxHighlightingError, InvalidParameterError, AnimationError)
+                                    CodeParsingError, SyntaxHighlightingError, InvalidParameterError, AnimationError,
+                                    ButtonError, ButtonCallbackError)
 
 __all__ = [
     # Main classes
@@ -2444,6 +2445,441 @@ class ProgressDisplayer(Displayer):
         return f"#{r:02x}{g:02x}{b:02x}"
 
 
+class ButtonDisplayer(Displayer):
+    """
+    Displays interactive buttons with customizable callbacks and event handling.
+    """
+    
+    def __init__(self, styles: Dict[str, str]):
+        """
+        Initialize a button displayer with styles.
+        
+        Args:
+            styles: Dictionary of named styles
+        """
+        super().__init__(styles)
+        # Store registered callbacks to keep references
+        self._callback_registry = {}
+    
+    def display(self, text: str, *,
+                style: str = 'default', 
+                on_click: Optional[Callable] = None,
+                status_display: bool = True,
+                hover_effect: bool = True,
+                width: str = 'auto',
+                height: str = 'auto',
+                enabled: bool = True,
+                animate: Optional[str] = None,
+                position: Literal['left', 'mid', 'right'] = 'left',
+                **inline_styles) -> str:
+        """
+        Display an interactive button with various events and callbacks.
+        
+        Args:
+            text: Button text
+            style: Named style from available styles
+            on_click: Python function to call when button is clicked
+            status_display: Whether to show a status display area below button
+            hover_effect: Whether to enable hover effects
+            width: Button width (CSS value)
+            height: Button height (CSS value)
+            enabled: Whether the button is initially enabled
+            animate: Animation effect from Animate.css
+            position: Button alignment ('left', 'mid', 'right')
+            **inline_styles: Additional CSS styles to apply
+            
+        Returns:
+            Button ID for reference
+            
+        Raises:
+            ButtonError: If there's an issue with the button setup
+            StyleNotFoundError: If specified style is not found
+            ButtonCallbackError: If there's an issue with the callback
+        """
+        try:
+            # Generate unique IDs for button and container
+            button_id = f"colab_print_button_{uuid.uuid4().hex[:8]}"
+            container_id = f"button_container_{uuid.uuid4().hex[:8]}"
+            status_id = f"status_display_{uuid.uuid4().hex[:8]}"
+            
+            # Get base style
+            if style not in self.styles:
+                raise StyleNotFoundError(style_name=style)
+            base_style = self.styles.get(style)
+            
+            # Process styles
+            inline_style_string = self._process_inline_styles(inline_styles)
+            final_style = f"{base_style} {inline_style_string}" if inline_style_string else base_style
+            
+            # Process animation class if specified
+            animation_class = process_animation_class(animate)
+            class_attr = f'class="{animation_class}"' if animation_class else ''
+            
+            # Register callback if provided
+            callback_id = None
+            if on_click:
+                try:
+                    # Try importing and using Google Colab's output module
+                    from google.colab import output
+                    callback_name = f"{button_id}_callback"
+                    callback_id = output.register_callback(callback_name, on_click)
+                    # Store reference to prevent garbage collection
+                    self._callback_registry[callback_id] = on_click
+                except (ImportError, AttributeError) as e:
+                    raise ButtonCallbackError(
+                        callback_name="on_click",
+                        message="Google Colab environment required for callbacks. "
+                                f"Failed to register callback: {str(e)}"
+                    )
+            
+            # Create button HTML
+            html_content = self._generate_button_html(
+                button_id=button_id,
+                container_id=container_id,
+                status_id=status_id,
+                text=text,
+                style=final_style,
+                status_display=status_display,
+                width=width,
+                height=height,
+                enabled=enabled,
+                class_attr=class_attr,
+                position=position
+            )
+            
+            # Create JavaScript for button behavior
+            js_content = self._generate_button_js(
+                button_id=button_id,
+                status_id=status_id,
+                on_click=bool(on_click),
+                callback_id=callback_id,
+                hover_effect=hover_effect,
+                status_display=status_display,
+                enabled=enabled
+            )
+            
+            # Display HTML and JavaScript
+            self._display_html_and_js(html_content, js_content)
+            
+            return button_id
+        
+        except (StyleNotFoundError, ButtonCallbackError) as e:
+            # Pass through known exceptions
+            raise
+        except Exception as e:
+            # Wrap unknown exceptions
+            raise ButtonError(f"Error creating button: {str(e)}")
+    
+    def _generate_button_html(self, button_id: str, container_id: str, status_id: str,
+                             text: str, style: str, status_display: bool,
+                             width: str, height: str, enabled: bool, class_attr: str,
+                             position: Literal['left', 'mid', 'right'] = 'left') -> str:
+        """
+        Generate HTML for button and container.
+        
+        Args:
+            button_id: Unique ID for button
+            container_id: Unique ID for container
+            status_id: Unique ID for status display
+            text: Button text
+            style: Button style
+            status_display: Whether to include status display
+            width: Button width
+            height: Button height
+            enabled: Whether button is enabled
+            class_attr: Class attribute for animation
+            position: Button alignment ('left', 'mid', 'right')
+            
+        Returns:
+            HTML string for button
+        """
+        # Extract basic color from style for status display
+        base_color = "#3498db"  # Default blue color
+        color_match = re.search(r'background-color:\s*([^;]+)', style)
+        if color_match:
+            base_color = color_match.group(1).strip()
+        
+        # Button opacity based on enabled state
+        opacity = "1.0" if enabled else "0.6"
+        cursor = "pointer" if enabled else "not-allowed"
+        
+        # Base button style
+        button_style = f"{style}; width: {width}; height: {height}; opacity: {opacity}; cursor: {cursor};"
+        
+        # Map position to text-align value
+        text_align = {
+            'left': 'left',
+            'mid': 'center',
+            'right': 'right'
+        }[position]
+        
+        # Prepare HTML parts
+        html_parts = [
+            f'<div id="{container_id}" style="margin: 20px 0; text-align: {text_align};">',
+            f'  <button id="{button_id}" style="{button_style}" {class_attr} {"disabled" if not enabled else ""}>',
+            f'    {html.escape(text)}',
+            f'  </button>'
+        ]
+        
+        # Add status display if requested
+        if status_display:
+            html_parts.extend([
+                f'  <div id="{status_id}" style="',
+                f'    margin-top: 15px;',
+                f'    padding: 10px;',
+                f'    border: 1px solid #ddd;',
+                f'    border-radius: 4px;',
+                f'    min-height: 100px;',
+                f'    max-height: 150px;',
+                f'    overflow-y: auto;',
+                f'    background-color: #f9f9f9;',
+                f'    text-align: left;',  # Status display always left-aligned for readability
+                f'  ">',
+                f'    <p>Event log will appear here...</p>',
+                f'  </div>'
+            ])
+        
+        # Close container
+        html_parts.append('</div>')
+        
+        return '\n'.join(html_parts)
+    
+    def _generate_button_js(self, button_id: str, status_id: str,
+                            on_click: bool, callback_id: Optional[str],
+                            hover_effect: bool, status_display: bool,
+                            enabled: bool) -> str:
+        """
+        Generate JavaScript for button behavior.
+        """
+        js_parts = [
+            """// Get references to elements
+    const button = document.getElementById("{button_id}");""".format(button_id=button_id)
+        ]
+
+        if status_display:
+            js_parts.append("""const status = document.getElementById("{status_id}");
+
+    // Function to log events to status display
+    function logEvent(eventName, details = "") {{
+        const logEntry = document.createElement("p");
+        logEntry.style.margin = "5px 0";
+        logEntry.innerHTML = `<strong>${{eventName}}</strong>: ${{new Date().toLocaleTimeString()}} ${{details}}`;
+
+        // Prepend to show newest events at the top
+        status.insertBefore(logEntry, status.firstChild);
+
+        // Limit number of entries
+        if (status.children.length > 10) {{
+            status.removeChild(status.lastChild);
+        }}
+    }}
+
+    // Clear initial message
+    status.innerHTML = "";""".format(status_id=status_id))
+
+        if enabled:
+            if hover_effect:
+                js_parts.append("""// OnHoverEntering (mouseenter event)
+    button.addEventListener("mouseenter", function(e) {{
+        {log_hover_enter}
+        button.style.transform = "scale(1.05)";
+        button.style.boxShadow = "0 6px 8px rgba(0,0,0,0.15)";
+    }});
+
+    // OnHoverExit (mouseleave event)
+    button.addEventListener("mouseleave", function(e) {{
+        {log_hover_exit}
+        button.style.transform = "scale(1.0)";
+        button.style.boxShadow = "0 4px 6px rgba(0,0,0,0.1)";
+    }});""".format(
+        log_hover_enter='logEvent("OnHoverEntering");' if status_display else "",
+        log_hover_exit='logEvent("OnHoverExit");' if status_display else ""
+    ))
+
+            js_parts.append("""// OnPressDown (mousedown event)
+    button.addEventListener("mousedown", function(e) {{
+        {log_press_down}
+        button.style.boxShadow = "0 2px 3px rgba(0,0,0,0.1)";
+        button.style.transform = "translateY(2px)";
+    }});
+
+    // OnPressUp (mouseup event)
+    button.addEventListener("mouseup", function(e) {{
+        {log_press_up}
+        button.style.boxShadow = "0 4px 6px rgba(0,0,0,0.1)";
+        button.style.transform = "scale(1.0)";
+    }});""".format(
+        log_press_down='logEvent("OnPressDown", `at position (${e.offsetX}, ${e.offsetY})`);' if status_display else "",
+        log_press_up='logEvent("OnPressUp");' if status_display else ""
+    ))
+
+            if on_click and callback_id:
+                js_parts.append("""// OnClick with Python callback
+    button.addEventListener("click", function(e) {{
+        {log_click}
+        
+        // Call the Python function
+        google.colab.kernel.invokeFunction("{callback_id}", [], {{}})
+        .then(function(result) {{
+            {log_result}
+            if (result.data["text/plain"] && result.data["text/plain"].includes("__UPDATE_BUTTON_TEXT__:")) {{
+                const newText = result.data["text/plain"]
+                                    .split("__UPDATE_BUTTON_TEXT__:")[1]
+                                    .trim().replace(/^[\\'"](.+)[\\'"]$/, "$1");
+                button.textContent = newText;
+            }}
+        }})
+        .catch(function(error) {{
+            {log_error}
+        }});
+    }});""".format(
+        log_click='logEvent("OnClick", "Button was clicked!");' if status_display else "",
+        callback_id=callback_id,
+        log_result='logEvent("PythonCallback", `Returned: ${result.data["text/plain"]}`);' if status_display else "",
+        log_error='logEvent("Error", `Python callback error: ${error}`);' if status_display else ""
+    ))
+            else:
+                js_parts.append("""// OnClick (basic)
+    button.addEventListener("click", function(e) {{
+        {log_click}
+    }});""".format(
+        log_click='logEvent("OnClick", "Button was clicked!");' if status_display else ""
+    ))
+
+            js_parts.append("""// OnFocus (focus event)
+    button.addEventListener("focus", function(e) {{
+        {log_focus}
+        button.style.boxShadow = "0 0 0 3px rgba(52, 152, 219, 0.5)";
+    }});
+
+    // OnBlur (blur event)
+    button.addEventListener("blur", function(e) {{
+        {log_blur}
+        button.style.boxShadow = "0 4px 6px rgba(0,0,0,0.1)";
+    }});
+
+    // OnKeyDown (keydown event when button is focused)
+    button.addEventListener("keydown", function(e) {{
+        {log_key_down}
+        if (e.key === "Enter" || e.key === " ") {{
+            button.style.boxShadow = "0 2px 3px rgba(0,0,0,0.1)";
+            button.style.transform = "translateY(2px)";
+        }}
+    }});
+
+    // OnKeyUp (keyup event when button is focused)
+    button.addEventListener("keyup", function(e) {{
+        {log_key_up}
+        if (e.key === "Enter" || e.key === " ") {{
+            button.style.boxShadow = "0 4px 6px rgba(0,0,0,0.1)";
+            button.style.transform = "scale(1.0)";
+            button.click();
+        }}
+    }});""".format(
+        log_focus='logEvent("OnFocus", "Button received focus");' if status_display else "",
+        log_blur='logEvent("OnBlur", "Button lost focus");' if status_display else "",
+        log_key_down='logEvent("OnKeyDown", `Key pressed: ${e.key}`);' if status_display else "",
+        log_key_up='logEvent("OnKeyUp", `Key released: ${e.key}`);' if status_display else ""
+    ))
+
+        if status_display:
+            js_parts.append('logEvent("Initialization", "Button is ready");')
+
+        return "\n".join(js_parts)
+
+    
+    def _display_html_and_js(self, html_content: str, js_content: str) -> None:
+        """
+        Display both HTML and JavaScript.
+        
+        Args:
+            html_content: HTML content to display
+            js_content: JavaScript content to execute
+            
+        Raises:
+            IPythonNotAvailableError: If IPython environment is not detected
+            HTMLRenderingError: If content cannot be rendered
+        """
+        try:
+            # Display HTML first
+            ip_display(HTML(html_content))
+            
+            # Then execute JavaScript
+            ip_display(Javascript(js_content))
+        except NameError:
+            raise IPythonNotAvailableError(
+                "IPython environment not detected. Button will not be rendered properly."
+            )
+        except Exception as e:
+            raise HTMLRenderingError(f"Failed to render button: {str(e)}")
+    
+    def update_button_text(self, button_id: str, new_text: str) -> None:
+        """
+        Update the text of a button using JavaScript.
+        
+        Args:
+            button_id: ID of the button to update
+            new_text: New text for the button
+            
+        Raises:
+            ButtonError: If the button cannot be updated
+            IPythonNotAvailableError: If IPython environment is not detected
+        """
+        try:
+            # JavaScript to update button text
+            js_code = f"""
+            const button = document.getElementById("{button_id}");
+            if (button) {{
+                button.textContent = "{html.escape(new_text)}";
+            }} else {{
+                console.error("Button with ID {button_id} not found");
+            }}
+            """
+            
+            # Execute JavaScript
+            ip_display(Javascript(js_code))
+        except NameError:
+            raise IPythonNotAvailableError(
+                "IPython environment not detected. Button text cannot be updated."
+            )
+        except Exception as e:
+            raise ButtonError(f"Failed to update button text: {str(e)}")
+    
+    def enable_button(self, button_id: str, enabled: bool = True) -> None:
+        """
+        Enable or disable a button using JavaScript.
+        
+        Args:
+            button_id: ID of the button to update
+            enabled: Whether to enable (True) or disable (False) the button
+            
+        Raises:
+            ButtonError: If the button cannot be updated
+            IPythonNotAvailableError: If IPython environment is not detected
+        """
+        try:
+            # JavaScript to update button state
+            js_code = f"""
+            const button = document.getElementById("{button_id}");
+            if (button) {{
+                button.disabled = {str(not enabled).lower()};
+                button.style.opacity = {1.0 if enabled else 0.6};
+                button.style.cursor = "{("pointer" if enabled else "not-allowed")}";
+            }} else {{
+                console.error("Button with ID {button_id} not found");
+            }}
+            """
+            
+            # Execute JavaScript
+            ip_display(Javascript(js_code))
+        except NameError:
+            raise IPythonNotAvailableError(
+                "IPython environment not detected. Button state cannot be updated."
+            )
+        except Exception as e:
+            raise ButtonError(f"Failed to update button state: {str(e)}")
+
+
 class Printer:
     """
     Main class for displaying text, tables, and DataFrames with stylized HTML.
@@ -2480,6 +2916,7 @@ class Printer:
             self.dict_displayer = DictDisplayer(self.styles)
             self.progress_displayer = ProgressDisplayer(self.styles)
             self.mermaid_displayer = MermaidDisplayer(self.styles)
+            self.button_displayer = ButtonDisplayer(self.styles)
         except Exception as e:
             raise ColabPrintError(f"Error initializing Printer: {str(e)}")
 
@@ -3011,3 +3448,80 @@ class Printer:
         except Exception as e:
             # Wrap unknown exceptions
             raise CodeError(f"Error displaying code: {str(e)}")
+
+    def display_button(self, text: str, *,
+                       style: str = 'default',
+                       on_click: Optional[Callable] = None,
+                       status_display: bool = True,
+                       hover_effect: bool = True,
+                       width: str = 'auto',
+                       height: str = 'auto',
+                       enabled: bool = True,
+                       animate: Optional[str] = None,
+                       position: Literal['left', 'mid', 'right'] = 'left',
+                       **inline_styles) -> str:
+        """
+        Display an interactive button with various events and callbacks.
+        
+        Args:
+            text: Button text
+            style: Named style from available styles
+            on_click: Python function to call when button is clicked
+            status_display: Whether to show a status display area below button
+            hover_effect: Whether to enable hover effects
+            width: Button width (CSS value)
+            height: Button height (CSS value)
+            enabled: Whether the button is initially enabled
+            animate: Animation effect from Animate.css
+            position: Button alignment ('left', 'mid', 'right')
+            **inline_styles: Additional CSS styles to apply
+            
+        Returns:
+            Button ID for reference
+            
+        Raises:
+            ButtonError: If there's an issue with the button setup
+            StyleNotFoundError: If specified style is not found
+            ButtonCallbackError: If there's an issue with the callback
+        """
+        return self.button_displayer.display(
+            text,
+            style=style,
+            on_click=on_click,
+            status_display=status_display,
+            hover_effect=hover_effect,
+            width=width,
+            height=height,
+            enabled=enabled,
+            animate=animate,
+            position=position,
+            **inline_styles
+        )
+
+    def update_button_text(self, button_id: str, new_text: str) -> None:
+        """
+        Update the text of a button using JavaScript.
+        
+        Args:
+            button_id: ID of the button to update
+            new_text: New text for the button
+            
+        Raises:
+            ButtonError: If the button cannot be updated
+            IPythonNotAvailableError: If IPython environment is not detected
+        """
+        self.button_displayer.update_button_text(button_id, new_text)
+    
+    def enable_button(self, button_id: str, enabled: bool = True) -> None:
+        """
+        Enable or disable a button using JavaScript.
+        
+        Args:
+            button_id: ID of the button to update
+            enabled: Whether to enable (True) or disable (False) the button
+            
+        Raises:
+            ButtonError: If the button cannot be updated
+            IPythonNotAvailableError: If IPython environment is not detected
+        """
+        self.button_displayer.enable_button(button_id, enabled)
