@@ -258,3 +258,20 @@ class AnimationError(ColabPrintError):
     def __init__(self, animation_name: str, message: str):
         self.animation_name = animation_name
         super().__init__(message)
+
+
+class ButtonError(ContentTypeError):
+    """Exception raised for button issues."""
+    
+    def __init__(self, message="Button error"):
+        super().__init__(expected_type="Button", message=message)
+
+
+class ButtonCallbackError(ButtonError):
+    """Exception raised when there's an issue with button callbacks."""
+    
+    def __init__(self, callback_name="Unknown", message=None):
+        if message is None:
+            message = f"Error registering or executing callback '{callback_name}'"
+        super().__init__(message)
+        self.callback_name = callback_name
