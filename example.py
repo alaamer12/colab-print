@@ -14,12 +14,15 @@ from colab_print import (
     code, card, quote, badge, data_highlight, footer,
     highlight, info, success, warning, error, muted, primary, secondary,
     dfd, table, list_, dict_, progress, mermaid
-) 
+)
 import time
+
+P = Printer()
+
 
 def demo_printer_class():
     """Demo using the Printer class directly."""
-    
+
     print("=== DEMO: Using Printer Class Directly ===")
     printer = Printer()
     print(f"Available styles: {printer.get_available_styles()}")
@@ -41,7 +44,7 @@ def demo_printer_class():
     nested_list = ['Fruit', ['Apple', 'Banana'], 'Vegetable', ['Carrot', 'Broccoli']]
     printer.display_list(simple_list, style="success", item_style="padding-left: 15px;")
     printer.display_list(nested_list, ordered=True, style="default")
-    printer.display_list(('Tuple', 'Item 1', 'Item 2'), style="warning") # Also works with tuples
+    printer.display_list(('Tuple', 'Item 1', 'Item 2'), style="warning")  # Also works with tuples
 
     # --- Dictionary Display --- 
     print("\n--- Dictionary Display Examples ---")
@@ -78,16 +81,16 @@ def demo_printer_class():
 
     printer.display_df(df, caption="Student Scores")
     printer.display_df(df, style="info", max_rows=3, precision=1, caption="Limited Rows & Precision")
-    printer.display_df(df, style="success", 
-                      index=False, 
-                      highlight_cols=['Name', 'Score'],
-                      highlight_rows={1: "background-color: #DFF0D8;"}, # Bob
-                      highlight_cells={(4, 'Score'): "background-color: yellow; font-weight: bold;"}, # Eve's score
-                      caption="Styled DataFrame without Index")
+    printer.display_df(df, style="success",
+                       index=False,
+                       highlight_cols=['Name', 'Score'],
+                       highlight_rows={1: "background-color: #DFF0D8;"},  # Bob
+                       highlight_cells={(4, 'Score'): "background-color: yellow; font-weight: bold;"},  # Eve's score
+                       caption="Styled DataFrame without Index")
 
     # --- Custom Styles & Themes --- 
     print("\n--- Custom Style & Theme Examples ---")
-    
+
     # Add a single custom style
     printer.add_style("custom_blue", "color: navy; border: 1px solid blue; padding: 5px;")
     printer.display("This uses a custom added style.", style="custom_blue")
@@ -105,9 +108,9 @@ def demo_printer_class():
 
 def demo_global_shortcuts():
     """Demo using the global shortcut functions."""
-    
+
     print("\n=== DEMO: Using Global Shortcut Functions ===")
-    
+
     # --- Heading & Structure Display ---
     print("\n--- Heading & Structure Display ---")
     title("Colab Print Demo")
@@ -115,13 +118,13 @@ def demo_global_shortcuts():
     header("Main Section Header")
     subheader("Important Subsection")
     section_divider("Section Break")
-    
+
     # --- Content formatting ---
     print("\n--- Content Formatting ---")
     card("This is a card with important content that stands out from the rest of the text")
     quote("The best way to predict the future is to invent it. - Alan Kay")
     code("import pandas as pd\ndf = pd.read_csv('data.csv')\nprint(df.head())")
-    
+
     # Code with syntax highlighting (basic)
     code("""def example_function(param):
     \"\"\"An example function with a docstring.\"\"\"
@@ -129,7 +132,7 @@ def demo_global_shortcuts():
         return param * 2
     else:
         return param""", highlighting_mode="block")
-    
+
     # --- Status indicators ---
     print("\n--- Status Indicators ---")
     info("This is an informational message")
@@ -137,7 +140,7 @@ def demo_global_shortcuts():
     warning("Please be cautious with this action")
     error("An error occurred during processing")
     muted("This is less important information")
-    
+
     # --- Special elements ---
     print("\n--- Special Elements ---")
     data_highlight("99.8%")
@@ -147,110 +150,107 @@ def demo_global_shortcuts():
     secondary("Secondary option")
     highlight("This text needs attention", font_size="20px")  # Style override example
     footer("© 2023 Colab Print Project")
-    
+
     # --- Data Container Display ---
     print("\n--- Data Container Display ---")
-    
+
     # Sample data
     sample_dict = {
         "key1": "value1",
         "key2": "value2",
         "nested": {"a": 1, "b": 2}
     }
-    
+
     sample_list = ["Item 1", "Item 2", ["Nested 1", "Nested 2"]]
-    
+
     headers = ["Name", "Value", "Description"]
     rows = [
         ["Alpha", 100, "First item in list"],
         ["Beta", 200, "Second item in list"],
         ["Gamma", 300, "Third item in list"]
     ]
-    
+
     data = {
         'Category': ['A', 'B', 'C', 'D'],
         'Value1': [10, 20, 30, 40],
         'Value2': [100, 90, 80, 70]
     }
     df = pd.DataFrame(data)
-    
+
     # Display with the shortcuts
     dict_(sample_dict, key_style="color: #1565C0; font-weight: bold;")
     list_(sample_list, ordered=True)
     table(headers, rows, caption="Sample Table Data")
     dfd(df, max_rows=3, caption="Sample DataFrame")
-    
+
     # --- Style Override Examples ---
     print("\n--- Style Override Examples ---")
     header("Default Header")
-    header("Custom Color Header", color="#E53935") 
+    header("Custom Color Header", color="#E53935")
     header("Larger Header", font_size="32px")
-    
+
     info("Default Info Message")
     info("Custom Info", background_color="rgba(3, 169, 244, 0.1)", border_radius="10px")
-    
+
     card("Default Card")
     card("Custom Card", box_shadow="0 4px 8px rgba(0,0,0,0.2)", border_left="5px solid #673AB7")
 
 
 def demo_progress_bars():
     """Demo using the progress bar feature."""
-    
+
     print("\n--- Progress Bar Examples ---")
-    
-    # Import P for progress updates
-    from colab_print import P
-    
+
     # Determined progress bar example (manual style)
     print("\n--- Determined Progress Bar (Manual) ---")
     progress_id = progress(total=100, desc="Loading Data", color="#4a6fa5", height="25px")
     for i in range(101):
-        P.update_progress(progress_id, i)
+        P.update_progress(progress_id=progress_id, value=i)
         time.sleep(0.01)  # Simulate work being done
-    
+
     # TQDM-like functionality (Automatic progress with iterables)
     print("\n--- TQDM-like Progress (Automatic) ---")
-    
+
     # Example 1: With a list - automatically calculates total
     items = list(range(50))
     for item in progress(items, desc="Processing List"):
         time.sleep(0.02)  # Simulate work being done
-    
+
     # Example 2: With a custom total
     items = range(100)
     for item in progress(items, total=100, desc="Processing Range", color="#2ecc71"):
         if item % 3 == 0:  # Only process every third item
             time.sleep(0.02)
-    
+
     # Example 3: With a generator that doesn't have len() - undetermined progress
     def my_generator():
         for i in range(30):
             yield i
-    
+
     for item in progress(my_generator(), desc="Processing Generator", color="#e74c3c"):
         time.sleep(0.05)
-        
+
     # Traditional undetermined progress example
     print("\n--- Undetermined Progress Bar ---")
     progress_id2 = progress(desc="Processing Data", style="progress", color="#8E44AD", height="20px", animated=True)
-    
+
     # Simulate some processing work
     time.sleep(2)
-    
+
     # Important: Replace the undetermined progress with a completed one
     # This prevents the animation from running forever
     P.update_progress(progress_id2, 100, 100)
-    
+
     # Alternative ways to show completion
     print("\n--- Completing Progress Examples ---")
-    
+
     # Style 1: Show partial completion
     progress_id3 = progress(total=100, desc="Downloading Files", color="#16a085", height="20px")
     for i in range(0, 65, 5):
         P.update_progress(progress_id3, i)
         time.sleep(0.05)
     success("Download partially completed (65%)")
-    
+
     # Style 2: Show error state
     progress_id4 = progress(total=100, desc="Installing Packages", color="#c0392b", height="20px")
     for i in range(0, 85, 5):
@@ -261,34 +261,34 @@ def demo_progress_bars():
 
 def demo_enhanced_lists():
     """Demo showcasing the enhanced list display features."""
-    
+
     title("Enhanced List Display Features")
     subtitle("Showcasing new styling and formatting capabilities")
-    
+
     # Create a Printer instance for custom configurations
     printer = Printer()
-    
+
     # --- Simple color-coded nested lists ---
     header("Color-coded Nested Lists")
-    
+
     nested_list = [
         "Top Level",
         ["Level 1 - Item 1", "Level 1 - Item 2"],
         "Another Top Level",
-        ["Level 1 - Item 3", 
-            ["Level 2 - Nested A", "Level 2 - Nested B", 
-                ["Level 3 - Deep Nested", "Level 3 - Another Deep"]
-            ]
-        ],
+        ["Level 1 - Item 3",
+         ["Level 2 - Nested A", "Level 2 - Nested B",
+          ["Level 3 - Deep Nested", "Level 3 - Another Deep"]
+          ]
+         ],
         "Final Top Level"
     ]
-    
+
     info("Default color-coded nesting scheme:")
     list_(nested_list)
-    
+
     # --- Custom nesting colors ---
     subheader("Custom Nesting Colors")
-    
+
     # Use warm color scheme (reds to yellows)
     warm_colors = [
         "#E53935",  # Red
@@ -297,23 +297,23 @@ def demo_enhanced_lists():
         "#7CB342",  # Light Green
         "#039BE5",  # Light Blue
     ]
-    
+
     info("Warm color scheme for nesting:")
     list_(nested_list, nesting_colors=warm_colors)
-    
+
     # --- Matrix display ---
     header("Matrix Display")
-    
+
     # Simple matrix (2D array)
     matrix_data = [
         [1, 2, 3, 4],
         [5, 6, 7, 8],
         [9, 10, 11, 12]
     ]
-    
+
     info("Simple 2D matrix (automatically detected):")
     list_(matrix_data)
-    
+
     # Create a NumPy matrix
     np_matrix = np.array([
         [1.2, 3.4, 5.6],
@@ -321,27 +321,27 @@ def demo_enhanced_lists():
         [3.4, 5.6, 7.8],
         [9.0, 1.2, 3.4]
     ])
-    
+
     info("NumPy matrix with auto-detection:")
     list_(np_matrix)
-    
+
     # Force list display for 2D data
     info("Forcing list display for matrix data:")
     list_(matrix_data, matrix_mode=False)
-    
+
     # --- Array-like objects ---
     header("Array-like Objects Support")
-    
+
     # NumPy array (1D)
     np_array = np.array([10, 20, 30, 40, 50])
     info("NumPy 1D array:")
     list_(np_array)
-    
+
     # Pandas Series
     pd_series = pd.Series([1, 2, 3, 4, 5], index=['a', 'b', 'c', 'd', 'e'])
     info("Pandas Series:")
     list_(pd_series)
-    
+
     # Creating a pandas DataFrame
     df = pd.DataFrame({
         'A': [1, 2, 3],
@@ -349,36 +349,36 @@ def demo_enhanced_lists():
     })
     info("Pandas DataFrame (displayed as matrix):")
     list_(df)
-    
+
     # --- Complex nested structures ---
     header("Complex Nested Structures")
-    
+
     # Combined nested structure with different types
     complex_structure = [
         "Mixed Types Example",
         {"dict_in_list": "value", "nested_dict": {"a": 1, "b": 2}},
-        ["List in list", ["Deeper", np.array([1, 2, 3])]], 
+        ["List in list", ["Deeper", np.array([1, 2, 3])]],
         pd.Series([10, 20, 30], index=['x', 'y', 'z']),
         [
             [1, 2, 3],
             [4, 5, 6]
         ]
     ]
-    
+
     info("Complex nested structure with different data types:")
     list_(complex_structure)
-    
+
     # --- Generator and iterator examples ---
     header("Generators and Iterators")
-    
+
     # Generator example
     def sample_generator(n):
         for i in range(n):
             yield f"Generated item {i}"
-    
+
     info("Generator output:")
     list_(sample_generator(5))
-    
+
     # Iterator example (map object)
     map_iterator = map(lambda x: x * 10, range(5))
     info("Map iterator output:")
@@ -387,13 +387,13 @@ def demo_enhanced_lists():
 
 def demo_mermaid_diagrams():
     """Demo showcasing the Mermaid diagram rendering feature."""
-    
+
     title("Mermaid Diagram Examples")
     subtitle("Rendering diagrams with the new mermaid feature")
-    
+
     # --- Flowchart Example ---
     header("Flowchart Diagram")
-    
+
     flow_diagram = """
     graph TD
         A[Start] --> B{Is it working?}
@@ -403,13 +403,13 @@ def demo_mermaid_diagrams():
         C --> E[Continue]
         E --> F[End]
     """
-    
+
     info("Basic flowchart diagram with default theme:")
     mermaid(flow_diagram)
-    
+
     # --- Sequence Diagram Example ---
     header("Sequence Diagram")
-    
+
     sequence_diagram = """
     sequenceDiagram
         participant User
@@ -424,13 +424,13 @@ def demo_mermaid_diagrams():
         Server-->>Client: 201 Created
         Client-->>User: Show Success
     """
-    
+
     info("Sequence diagram with forest theme:")
     mermaid(sequence_diagram, theme="forest")
-    
+
     # --- Class Diagram Example ---
     header("Class Diagram")
-    
+
     class_diagram = """
     classDiagram
         class Animal {
@@ -447,13 +447,13 @@ def demo_mermaid_diagrams():
         Animal <|-- Dog
         Animal <|-- Cat
     """
-    
+
     info("Class diagram with dark theme and custom container style:")
     mermaid(class_diagram, theme="dark", background_color="#282c34", padding="20px", border_radius="8px")
-    
+
     # --- Gantt Chart Example ---
     header("Gantt Chart")
-    
+
     gantt_chart = """
     gantt
         title Project Timeline
@@ -466,13 +466,13 @@ def demo_mermaid_diagrams():
         Testing          :         des4, after des3, 7d
         Deployment       :         des5, after des4, 3d
     """
-    
+
     info("Gantt chart with neutral theme:")
     mermaid(gantt_chart, theme="neutral")
-    
+
     # --- State Diagram Example ---
     header("State Diagram")
-    
+
     state_diagram = """
     stateDiagram-v2
         [*] --> Still
@@ -482,26 +482,26 @@ def demo_mermaid_diagrams():
         Moving --> Crash
         Crash --> [*]
     """
-    
+
     info("State diagram with custom styling:")
     mermaid(state_diagram, border_left="4px solid #3498db")
-    
+
     # --- Entity Relationship Diagram ---
     header("Entity Relationship Diagram")
-    
+
     er_diagram = """
     erDiagram
         CUSTOMER ||--o{ ORDER : places
         ORDER ||--|{ LINE-ITEM : contains
         CUSTOMER }|..|{ DELIVERY-ADDRESS : uses
     """
-    
+
     info("Entity relationship diagram:")
     mermaid(er_diagram)
-    
+
     # --- Using Printer class directly ---
     header("Using Printer Class")
-    
+
     pie_chart = """
     pie title Product Distribution
         "Electronics" : 35
@@ -510,13 +510,13 @@ def demo_mermaid_diagrams():
         "Books" : 15
         "Other" : 5
     """
-    
+
     info("Using the Printer class to display a pie chart:")
     printer = Printer()
     printer.display_mermaid(pie_chart, theme="default", style="card")
 
-def display_mermaid_2():
 
+def display_mermaid_2():
     # Create a simple diagram file for demonstration
     import os
     os.makedirs('examples/diagrams', exist_ok=True)
@@ -589,17 +589,18 @@ def display_mermaid_2():
         System-->>User: Another Response
     ''', theme='dark', custom_css=dark_styles)
 
-    print("\nAll examples completed.") 
+    print("\nAll examples completed.")
+
 
 def demo_enhanced_code_display():
     """Demo showcasing the enhanced code display features."""
-    
+
     title("Enhanced Code Display Features")
     subtitle("Showcasing Python prompt detection and syntax highlighting")
-    
+
     # --- Basic code display ---
     header("Basic Code Display")
-    
+
     simple_code = """def greet(name):
     \"\"\"Simple greeting function\"\"\"
     return f"Hello, {name}!"
@@ -611,10 +612,10 @@ print(greet("World"))"""
 
     info("Basic code display with gradient highlighting:")
     code(simple_code, highlighting_mode="gradient")
-    
+
     # --- Python REPL prompt recognition ---
     header("Python REPL Prompt Recognition")
-    
+
     repl_code = """>>> x = 5
 >>> y = 10
 >>> x + y
@@ -635,15 +636,15 @@ print(greet("World"))"""
 120"""
 
     info("Code with Python REPL prompts (block highlighting):")
-    code(repl_code, highlighting_mode="block") 
-    
+    code(repl_code, highlighting_mode="block")
+
     info("Code with Python REPL prompts (gradient highlighting):")
-    code(repl_code, highlighting_mode="gradient", 
+    code(repl_code, highlighting_mode="gradient",
          background_color="#f8f9fa")
-    
+
     # --- Shell prompt recognition ---
     header("Shell Prompt Recognition")
-    
+
     shell_code = """> ls -la
 > cd /home/user
 > mkdir new_folder
@@ -655,10 +656,10 @@ Hello World"""
 
     info("Code with shell prompts:")
     code(shell_code, highlighting_mode="block")
-    
+
     # --- Mixed prompts and customization ---
     header("Mixed Prompts and Customization")
-    
+
     mixed_code = """# Python example
 >>> import random
 >>> random.randint(1, 100)
@@ -677,17 +678,17 @@ Successfully installed pandas
 2  3"""
 
     info("Mixed Python and shell prompts with custom styling:")
-    code(mixed_code, 
-         highlighting_mode="block", 
-         background_color="#2d2d2d", 
-         color="#f8f8f2", 
+    code(mixed_code,
+         highlighting_mode="block",
+         background_color="#2d2d2d",
+         color="#f8f8f2",
          font_family="'Fira Code', monospace",
          border_radius="8px",
          line_height="1.5")
-    
+
     # --- Complex code example ---
     header("Complex Code Example")
-    
+
     complex_code = """# A more complex example with nested indentation
 def process_data(data):
     \"\"\"Process a data structure with nested elements.\"\"\"
@@ -720,43 +721,161 @@ def process_data(data):
 
     info("Complex code with block-level highlighting to show indentation:")
     code(complex_code, highlighting_mode="block")
-    
+
     # --- Error handling example ---
     header("Error Cases (Try in a notebook)")
-    
+
     info("Examples of error handling (these would raise exceptions in a notebook):")
-    
+
     code("""# These would normally raise errors:
 # code(123)  # Not a string
 # code("print('hello')", highlighting_mode="invalid")  # Invalid mode
 # code("print('hello')", background_color="invalid")  # Invalid color""")
 
+
+def demo_animation():
+    """Demo showcasing the animation capabilities using Animate.css."""
+
+    title("Animation Features")
+    subtitle("Showcasing Animate.css animations with colab-print", animate="fadeIn")
+
+    header("Basic Animations")
+
+    # Entry animations
+    subheader("Entry Animations", animate="bounceIn")
+    info("This message fades in", animate="fadeIn")
+    success("This message slides in from the left", animate="slideInLeft")
+    warning("This message slides in from the right", animate="slideInRight")
+
+    # Attention animations
+    subheader("Attention Animations", animate="pulse")
+    primary("This message pulses", animate="pulse")
+    secondary("This message shakes", animate="shakeX")
+    card("This message bounces", animate="bounce")
+    highlight("This message flashes", animate="flash")
+
+    # Exit animations (they'll still be visible after the animation)
+    subheader("Exit-style Animations", animate="tada")
+    error("This would fade out in a real scenario", animate="fadeOut")
+    muted("This would slide up in a real scenario", animate="slideOutUp")
+    badge("Zoom", animate="zoomIn")
+
+    # Combinations with formatting
+    header("Combining Animations with Styling")
+
+    # Create a styled message with animation
+    info("Animated and styled message",
+         animate="fadeInDown",
+         font_weight="bold",
+         font_size="18px",
+         border_radius="8px",
+         box_shadow="0 4px 8px rgba(0,0,0,0.1)")
+
+    # Animated code
+    subheader("Animated Code Blocks", animate="fadeInUp")
+
+    code("""def hello_world():
+    print("Hello, animated world!")
+    
+hello_world()""", animate="fadeIn")
+
+    # Animated data structures
+    subheader("Animated Data Structures", animate="slideInLeft")
+
+    sample_dict = {
+        "name": "Animation Demo",
+        "features": ["fade", "slide", "bounce"],
+        "usage": "Add animate='effect_name' parameter"
+    }
+
+    dict_(sample_dict, animate="zoomIn")
+
+    sample_list = ["Fade In", "Bounce", "Shake", "Pulse", "Zoom In"]
+    list_(sample_list, animate="fadeInRight", ordered=True)
+
+    # Animation with tables
+    subheader("Animated Tables", animate="slideInRight")
+
+    headers = ["Animation", "Type", "Description"]
+    rows = [
+        ["fadeIn", "Entry", "Element fades into view"],
+        ["bounce", "Attention", "Element bounces up and down"],
+        ["shakeX", "Attention", "Element shakes horizontally"],
+        ["zoomOut", "Exit", "Element zooms out of view"]
+    ]
+
+    table(headers, rows, animate="fadeInUp", caption="Common Animations")
+
+    # Animation categories and examples
+    header("Animation Categories", animate="fadeIn")
+
+    categories = [
+        ("Attention seekers", ["bounce", "flash", "pulse", "shakeX", "tada"]),
+        ("Fading entrances", ["fadeIn", "fadeInDown", "fadeInLeft", "fadeInRight", "fadeInUp"]),
+        ("Fading exits", ["fadeOut", "fadeOutDown", "fadeOutLeft", "fadeOutRight", "fadeOutUp"]),
+        ("Bouncing entrances", ["bounceIn", "bounceInDown", "bounceInLeft", "bounceInRight", "bounceInUp"]),
+        ("Zooming entrances", ["zoomIn", "zoomInDown", "zoomInLeft", "zoomInRight", "zoomInUp"]),
+        ("Sliding entrances", ["slideInDown", "slideInLeft", "slideInRight", "slideInUp"])
+    ]
+
+    for category, examples in categories:
+        subheader(category, animate="fadeIn")
+        examples_text = ", ".join(examples)
+        info(f"Examples: {examples_text}", animate="fadeIn")
+
+    # Animation best practices
+    header("Animation Tips")
+
+    card("""Animation Best Practices:
+1. Use animations sparingly for emphasis
+2. Choose appropriate animations for the content
+3. Keep animations subtle for professional applications
+4. Use entry animations for new content
+5. Consider accessibility - some users may prefer reduced motion""",
+         animate="fadeIn")
+
+    # Error handling example (commented out to prevent actual errors)
+    code("""# This would raise an AnimationError in a notebook:
+# error("This has an invalid animation", animate="invalid_animation_name")
+
+# Incorrect case (would raise error):
+# info("This has wrong case", animate="fadein")  # Wrong! Should be "fadeIn"
+
+# These are valid animations:
+info("Fade In", animate="fadeIn")
+warning("Bounce", animate="bounce")
+success("Slide In Up", animate="slideInUp")""", animate="fadeIn")
+
+
 def main():
     """Main function to run the examples."""
-    
+
     print("===== COLAB PRINT LIBRARY DEMO =====")
-    
+
     # Uncomment to run the original Printer class demo
     # demo_printer_class()
-    
+
     # Demo the new global shortcut functions
     demo_global_shortcuts()
-    
+
     # Demo the enhanced code display features
     demo_enhanced_code_display()
-    
+
     # Demo the enhanced list display features
     demo_enhanced_lists()
-    
+
+    # Demo the animation features
+    demo_animation()
+
     # Demo the progress bar feature
     demo_progress_bars()
-    
+
     # Demo the mermaid diagram feature
     demo_mermaid_diagrams()
     display_mermaid_2()
-    
+
     print("\n===== END OF DEMO =====")
 
 
 if __name__ == "__main__":
-    main() 
+    main()
