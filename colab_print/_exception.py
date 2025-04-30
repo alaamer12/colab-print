@@ -251,3 +251,10 @@ class DisplayUpdateError(DisplayMethodError):
             message = f"Failed to update displayed element with ID '{element_id}'"
         super().__init__(method_name="update", message=message)
         self.element_id = element_id
+
+
+class AnimationError(ColabPrintError):
+    """Error raised when there's an issue with animation parameters."""
+    def __init__(self, animation_name: str, message: str):
+        self.animation_name = animation_name
+        super().__init__(message)
