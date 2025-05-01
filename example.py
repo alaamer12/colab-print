@@ -13,7 +13,7 @@ from colab_print import (
     Printer, header, title, subtitle, section_divider, subheader,
     code, card, quote, badge, data_highlight, footer,
     highlight, info, success, warning, error, muted, primary, secondary,
-    dfd, table, list_, dict_, progress, mermaid
+    dfd, table, list_, dict_, progress, mermaid, md
 )
 import time
 
@@ -734,117 +734,179 @@ def process_data(data):
 
 
 def demo_animation():
-    """Demo showcasing the animation capabilities using Animate.css."""
+    """Demo animation effects."""
 
-    title("Animation Features")
-    subtitle("Showcasing Animate.css animations with colab-print", animate="fadeIn")
-
-    header("Basic Animations")
-
-    # Entry animations
-    subheader("Entry Animations", animate="bounceIn")
-    info("This message fades in", animate="fadeIn")
-    success("This message slides in from the left", animate="slideInLeft")
-    warning("This message slides in from the right", animate="slideInRight")
-
-    # Attention animations
-    subheader("Attention Animations", animate="pulse")
-    primary("This message pulses", animate="pulse")
-    secondary("This message shakes", animate="shakeX")
-    card("This message bounces", animate="bounce")
-    highlight("This message flashes", animate="flash")
-
-    # Exit animations (they'll still be visible after the animation)
-    subheader("Exit-style Animations", animate="tada")
-    error("This would fade out in a real scenario", animate="fadeOut")
-    muted("This would slide up in a real scenario", animate="slideOutUp")
-    badge("Zoom", animate="zoomIn")
-
-    # Combinations with formatting
-    header("Combining Animations with Styling")
-
-    # Create a styled message with animation
-    info("Animated and styled message",
-         animate="fadeInDown",
-         font_weight="bold",
-         font_size="18px",
-         border_radius="8px",
-         box_shadow="0 4px 8px rgba(0,0,0,0.1)")
-
-    # Animated code
-    subheader("Animated Code Blocks", animate="fadeInUp")
-
-    code("""def hello_world():
-    print("Hello, animated world!")
+    print("\n=== DEMO: Animation Effects ===")
     
-hello_world()""", animate="fadeIn")
-
-    # Animated data structures
-    subheader("Animated Data Structures", animate="slideInLeft")
-
-    sample_dict = {
-        "name": "Animation Demo",
-        "features": ["fade", "slide", "bounce"],
-        "usage": "Add animate='effect_name' parameter"
-    }
-
-    dict_(sample_dict, animate="zoomIn")
-
-    sample_list = ["Fade In", "Bounce", "Shake", "Pulse", "Zoom In"]
-    list_(sample_list, animate="fadeInRight", ordered=True)
-
-    # Animation with tables
-    subheader("Animated Tables", animate="slideInRight")
-
-    headers = ["Animation", "Type", "Description"]
+    # --- Basic Animations ---
+    title("Animation Effects Demo", animate="fadeIn")
+    subtitle("Showcasing Animate.css integration", animate="slideInRight")
+    
+    section_divider("Attention Seekers", animate="pulse")
+    
+    time.sleep(0.5)
+    info("Pulse Effect", animate="pulse")
+    time.sleep(0.5)
+    warning("Shake Effect", animate="shakeX")
+    time.sleep(0.5)
+    error("Bounce Effect", animate="bounce")
+    time.sleep(0.5)
+    success("Flash Effect", animate="flash")
+    
+    section_divider("Entrances", animate="flipInX")
+    
+    time.sleep(0.5)
+    card("Fade In", animate="fadeIn")
+    time.sleep(0.5)
+    card("Slide In Left", animate="slideInLeft")
+    time.sleep(0.5)
+    card("Slide In Right", animate="slideInRight")
+    time.sleep(0.5)
+    card("Bounce In", animate="bounceIn")
+    
+    section_divider("Exits", animate="flipInY")
+    
+    time.sleep(0.5)
+    code("# This code block will fade out\nprint('Hello, world!')", animate="fadeOut", delay="3s")
+    time.sleep(0.5)
+    badge("Slide Out Up", animate="slideOutUp", delay="3s")
+    time.sleep(0.5)
+    highlight("Slide Out Down", animate="slideOutDown", delay="3s")
+    time.sleep(0.5)
+    quote("This quote will disappear to the right", animate="slideOutRight", delay="3s")
+    
+    section_divider("Complex Combinations", animate="fadeInUp")
+    
+    time.sleep(0.5)
+    headers = ["Animation", "Duration", "Delay"]
     rows = [
-        ["fadeIn", "Entry", "Element fades into view"],
-        ["bounce", "Attention", "Element bounces up and down"],
-        ["shakeX", "Attention", "Element shakes horizontally"],
-        ["zoomOut", "Exit", "Element zooms out of view"]
+        ["bounce", "1s", "0s"],
+        ["flash", "2s", "1s"],
+        ["pulse", "3s", "2s"]
     ]
+    table(headers, rows, caption="Animation Properties", animate="zoomIn")
+    
+    time.sleep(0.5)
+    sample_dict = {
+        "name": "Animate.css",
+        "version": "4.1.1",
+        "animations": ["Attention seekers", "Entrances", "Exits", "Others"]
+    }
+    dict_(sample_dict, animate="rotateIn")
+    
+    # Animation with custom styling
+    time.sleep(0.5)
+    header("Custom Animation Styling", animate="fadeInLeft", animation_duration="2s", animation_delay="0.5s")
 
-    table(headers, rows, animate="fadeInUp", caption="Common Animations")
 
-    # Animation categories and examples
-    header("Animation Categories", animate="fadeIn")
+def demo_md():
+    """Demo showcasing the Markdown display feature."""
 
-    categories = [
-        ("Attention seekers", ["bounce", "flash", "pulse", "shakeX", "tada"]),
-        ("Fading entrances", ["fadeIn", "fadeInDown", "fadeInLeft", "fadeInRight", "fadeInUp"]),
-        ("Fading exits", ["fadeOut", "fadeOutDown", "fadeOutLeft", "fadeOutRight", "fadeOutUp"]),
-        ("Bouncing entrances", ["bounceIn", "bounceInDown", "bounceInLeft", "bounceInRight", "bounceInUp"]),
-        ("Zooming entrances", ["zoomIn", "zoomInDown", "zoomInLeft", "zoomInRight", "zoomInUp"]),
-        ("Sliding entrances", ["slideInDown", "slideInLeft", "slideInRight", "slideInUp"])
-    ]
+    title("Markdown Display Examples")
+    subtitle("Rendering Markdown content with read more/less functionality")
 
-    for category, examples in categories:
-        subheader(category, animate="fadeIn")
-        examples_text = ", ".join(examples)
-        info(f"Examples: {examples_text}", animate="fadeIn")
+    # Creating example markdown files for demonstration
+    import os
+    os.makedirs('examples/markdown', exist_ok=True)
 
-    # Animation best practices
-    header("Animation Tips")
+    # Basic markdown example
+    basic_markdown = """# Markdown Example
 
-    card("""Animation Best Practices:
-1. Use animations sparingly for emphasis
-2. Choose appropriate animations for the content
-3. Keep animations subtle for professional applications
-4. Use entry animations for new content
-5. Consider accessibility - some users may prefer reduced motion""",
-         animate="fadeIn")
+This is a basic markdown example demonstrating the `MDDisplayer` class functionality.
 
-    # Error handling example (commented out to prevent actual errors)
-    code("""# This would raise an AnimationError in a notebook:
-# error("This has an invalid animation", animate="invalid_animation_name")
+## Features
 
-# Incorrect case (would raise error):
-# info("This has wrong case", animate="fadein")  # Wrong! Should be "fadeIn"
+- **Syntax highlighting** for code blocks
+- *Formatted text* with Markdown
+- Tables and lists
+- Read more/less functionality
 
-# These are valid animations:
-info("Fade In", animate="fadeIn")
-warning("Bounce", animate="bounce")
-success("Slide In Up", animate="slideInUp")""", animate="fadeIn")
+## Code Example
+
+```python
+def hello_world():
+    print("Hello, World!")
+    return True
+```
+
+## Table Example
+
+| Name | Age | Occupation |
+|------|-----|------------|
+| John | 28  | Developer  |
+| Jane | 32  | Designer   |
+| Bob  | 45  | Manager    |
+
+"""
+
+    with open('examples/markdown/basic.md', 'w', encoding='utf-8') as f:
+        f.write(basic_markdown)
+
+    # Longer markdown example with more content
+    longer_markdown = basic_markdown + """
+## Additional Content
+
+This section demonstrates the 'read more' functionality by adding more content.
+
+### Lists
+
+1. First item
+2. Second item
+   - Nested item 1
+   - Nested item 2
+3. Third item
+
+### Blockquotes
+
+> This is a blockquote.
+> It can span multiple lines.
+
+### Horizontal Rule
+
+---
+
+### Links and Images
+
+[Link to Google](https://www.google.com)
+
+![Image placeholder](https://via.placeholder.com/150)
+
+## Final Section
+
+This is the end of our markdown example document.
+"""
+
+    with open('examples/markdown/longer.md', 'w', encoding='utf-8') as f:
+        f.write(longer_markdown)
+
+    # --- Basic Examples ---
+    header("Basic Markdown Example")
+    info("Display markdown from a file:")
+    
+    # Using the Printer class directly
+    printer = Printer()
+    printer.display_md('examples/markdown/basic.md')
+
+    # --- Styled Examples ---
+    header("Styled Markdown Example")
+    info("Displaying markdown with custom styling:")
+    md('examples/markdown/longer.md', style="card", border_left="5px solid #4CAF50")
+
+    # --- Animated Example ---
+    header("Animated Markdown")
+    info("Markdown content with animation effects:")
+    md('examples/markdown/basic.md', animate="fadeIn")
+
+    # --- Inline Styles Example ---
+    header("Custom Styled Markdown")
+    info("Applying custom inline styles:")
+    md('examples/markdown/longer.md', background_color="#f8f8f8", padding="20px", border_radius="10px")
+
+    # --- URL Example ---
+    # We'll use a public markdown file URL for this example
+    header("Loading Markdown from URL")
+    info("Loading markdown content from a URL:")
+    md('https://raw.githubusercontent.com/adam-p/markdown-here/master/README.md', is_url=True)
 
 
 def main():
@@ -873,6 +935,9 @@ def main():
     # Demo the mermaid diagram feature
     demo_mermaid_diagrams()
     display_mermaid_2()
+
+    # Demo the markdown display feature
+    demo_md()
 
     print("\n===== END OF DEMO =====")
 
