@@ -24,27 +24,27 @@ def demo_printer_class():
     """Demo using the Printer class directly."""
 
     print("=== DEMO: Using Printer Class Directly ===")
-    printer = Printer()
-    print(f"Available styles: {printer.get_available_styles()}")
+    P = Printer()
+    print(f"Available styles: {P.get_available_styles()}")
 
     # --- Text Display --- 
     print("\n--- Text Display Examples ---")
-    printer.display("This is default text.")
-    printer.display("This is highlighted text.", style="highlight")
-    printer.display("This is info text.", style="info")
-    printer.display("This is success text.", style="success")
-    printer.display("This is warning text.", style="warning")
-    printer.display("This is error text.", style="error")
-    printer.display("This is muted text.", style="muted")
-    printer.display("Inline style example.", style="info", font_weight="bold", text_decoration="underline")
+    P.display("This is default text.")
+    P.display("This is highlighted text.", style="highlight")
+    P.display("This is info text.", style="info")
+    P.display("This is success text.", style="success")
+    P.display("This is warning text.", style="warning")
+    P.display("This is error text.", style="error")
+    P.display("This is muted text.", style="muted")
+    P.display("Inline style example.", style="info", font_weight="bold", text_decoration="underline")
 
     # --- List Display --- 
     print("\n--- List Display Examples ---")
     simple_list = ['Apple', 'Banana', 'Cherry']
     nested_list = ['Fruit', ['Apple', 'Banana'], 'Vegetable', ['Carrot', 'Broccoli']]
-    printer.display_list(simple_list, style="success", item_style="padding-left: 15px;")
-    printer.display_list(nested_list, ordered=True, style="default")
-    printer.display_list(('Tuple', 'Item 1', 'Item 2'), style="warning")  # Also works with tuples
+    P.display_list(simple_list, style="success", item_style="padding-left: 15px;")
+    P.display_list(nested_list, ordered=True, style="default")
+    P.display_list(('Tuple', 'Item 1', 'Item 2'), style="warning")  # Also works with tuples
 
     # --- Dictionary Display --- 
     print("\n--- Dictionary Display Examples ---")
@@ -55,8 +55,8 @@ def demo_printer_class():
         'Author': {'Name': 'Alaa', 'Contact': 'test@example.com'},
         'Features': ['Text', 'List', 'Dict', 'Table', 'DataFrame']
     }
-    printer.display_dict(simple_dict, style="info")
-    printer.display_dict(nested_dict, style="default", key_style="color: blue;", value_style="color: green;")
+    P.display_dict(simple_dict, style="info")
+    P.display_dict(nested_dict, style="default", key_style="color: blue;", value_style="color: green;")
 
     # --- Table Display --- 
     print("\n--- Table Display Examples ---")
@@ -66,8 +66,8 @@ def demo_printer_class():
         [102, "Keyboard", 75.00, False],
         [103, "Mouse", 25.99, True]
     ]
-    printer.display_table(headers, rows, style="default", caption="Inventory")
-    printer.display_table(headers, rows, style="highlight", width="80%")
+    P.display_table(headers, rows, style="default", caption="Inventory")
+    P.display_table(headers, rows, style="highlight", width="80%")
 
     # --- DataFrame Display --- 
     print("\n--- DataFrame Display Examples ---")
@@ -79,9 +79,9 @@ def demo_printer_class():
     }
     df = pd.DataFrame(data)
 
-    printer.display_df(df, caption="Student Scores")
-    printer.display_df(df, style="info", max_rows=3, precision=1, caption="Limited Rows & Precision")
-    printer.display_df(df, style="success",
+    P.display_df(df, caption="Student Scores")
+    P.display_df(df, style="info", max_rows=3, precision=1, caption="Limited Rows & Precision")
+    P.display_df(df, style="success",
                        index=False,
                        highlight_cols=['Name', 'Score'],
                        highlight_rows={1: "background-color: #DFF0D8;"},  # Bob
@@ -92,9 +92,9 @@ def demo_printer_class():
     print("\n--- Custom Style & Theme Examples ---")
 
     # Add a single custom style
-    printer.add_style("custom_blue", "color: navy; border: 1px solid blue; padding: 5px;")
-    printer.display("This uses a custom added style.", style="custom_blue")
-    print(f"Updated styles: {printer.get_available_styles()}")
+    P.add_style("custom_blue", "color: navy; border: 1px solid blue; padding: 5px;")
+    P.display("This uses a custom added style.", style="custom_blue")
+    print(f"Updated styles: {P.get_available_styles()}")
 
     # Initialize a new Printer with additional themes
     custom_themes = {
@@ -266,7 +266,7 @@ def demo_enhanced_lists():
     subtitle("Showcasing new styling and formatting capabilities")
 
     # Create a Printer instance for custom configurations
-    printer = Printer()
+    P = Printer()
 
     # --- Simple color-coded nested lists ---
     header("Color-coded Nested Lists")
@@ -512,8 +512,8 @@ def demo_mermaid_diagrams():
     """
 
     info("Using the Printer class to display a pie chart:")
-    printer = Printer()
-    printer.display_mermaid(pie_chart, theme="default", style="card")
+    P = Printer()
+    P.display_mermaid(pie_chart, theme="default", style="card")
 
 
 def display_mermaid_2():
@@ -564,9 +564,9 @@ def display_mermaid_2():
         D --> E
     ''', theme='default', custom_css=custom_styles)
 
-    # Example 4: Using printer instance with custom CSS
+    # Example 4: Using P instance with custom CSS
     print("\nExample 4: Using Printer instance with custom CSS")
-    printer = Printer()
+    P = Printer()
 
     # Custom styles focused on dark theme
     dark_styles = {
@@ -579,7 +579,7 @@ def display_mermaid_2():
         '.nodeLabel': 'color: #ffffff;'
     }
 
-    printer.display_mermaid('''
+    P.display_mermaid('''
     sequenceDiagram
         participant User
         participant System
@@ -884,8 +884,8 @@ This is the end of our markdown example document.
     info("Display markdown from a file:")
     
     # Using the Printer class directly
-    printer = Printer()
-    printer.display_md('examples/markdown/basic.md')
+    P = Printer()
+    P.display_md('examples/markdown/basic.md')
 
     # --- Styled Examples ---
     header("Styled Markdown Example")
@@ -908,6 +908,214 @@ This is the end of our markdown example document.
     info("Loading markdown content from a URL:")
     md('https://raw.githubusercontent.com/adam-p/markdown-here/master/README.md', is_url=True)
 
+def divider(title: str) -> None:
+    """Print a divider with title."""
+    print("\n" + "=" * 50)
+    print(f"  {title}")
+    print("=" * 50 + "\n")
+
+def demo_basic_tables() -> None:
+    """Demonstrate basic table creation with different data structures."""
+    divider("BASIC TABLES")
+    
+    # Simple table with list inputs
+    print("Basic table with list data:")
+    P.display_table(
+        ["Name", "Age", "City"],
+        [
+            ["Alice", 30, "New York"],
+            ["Bob", 25, "San Francisco"],
+            ["Charlie", 35, "Chicago"]
+        ]
+    )
+    
+    # Table with tuple inputs
+    print("\nTable with tuple data:")
+    P.display_table(
+        ["Product", "Price", "Stock"],
+        [
+            ("Laptop", 1299.99, 10),
+            ("Phone", 799.99, 25),
+            ("Headphones", 149.99, 50)
+        ]
+    )
+    
+    # Table with mixed input types
+    print("\nTable with mixed data types:")
+    P.display_table(
+        ["ID", "Name", "Active", "Data"],
+        [
+            [1, "Project Alpha", True, [1, 2, 3]],
+            [2, "Project Beta", False, {"x": 1, "y": 2}],
+            [3, "Project Gamma", True, (4, 5, 6)]
+        ]
+    )
+
+def demo_numpy_arrays() -> None:
+    """Demonstrate tables with NumPy arrays."""
+    divider("NUMPY ARRAYS")
+    
+    # Create a 2D numpy array
+    data = np.array([
+        [1, 2, 3, 4],
+        [5, 6, 7, 8],
+        [9, 10, 11, 12]
+    ])
+    
+    print("Table from NumPy array:")
+    P.display_table(
+        ["Col 1", "Col 2", "Col 3", "Col 4"],
+        data.tolist()
+    )
+    
+    # Table with mixed numpy data
+    print("\nTable with mixed NumPy data types:")
+    P.display_table(
+        ["Array Type", "Sample Data", "Shape", "Mean"],
+        [
+            ["1D integers", np.array([1, 2, 3, 4, 5]), "(5,)", np.mean([1, 2, 3, 4, 5])],
+            ["2D floats", np.array([[1.1, 2.2], [3.3, 4.4]]), "(2, 2)", np.mean([[1.1, 2.2], [3.3, 4.4]])],
+            ["Boolean", np.array([True, False, True]), "(3,)", None]
+        ]
+    )
+
+def demo_dictionary_source() -> None:
+    """Demonstrate using dictionaries as data sources."""
+    divider("DICTIONARY SOURCES")
+    
+    # Dictionary with scalar values (single row)
+    print("Dictionary with scalar values:")
+    P.display_table(source_dict={
+        "Product": "Widget X",
+        "Price": 19.99,
+        "Stock": 42,
+        "Available": True
+    })
+    
+    # Dictionary with list values (multiple rows)
+    print("\nDictionary with list values (column-oriented data):")
+    P.display_table(source_dict={
+        "Name": ["Alice", "Bob", "Charlie"],
+        "Age": [30, 25, 35],
+        "City": ["New York", "San Francisco", "Chicago"]
+    })
+    
+    # Dictionary with mixed value types
+    print("\nDictionary with mixed value types:")
+    P.display_table(source_dict={
+        "Category": ["Electronics", "Furniture", "Books"],
+        "Items": [
+            ["Laptop", "Phone", "Tablet"], 
+            ["Chair", "Table", "Desk"], 
+            ["Fiction", "Non-fiction"]
+        ],
+        "In Stock": [True, False, True]
+    })
+
+def demo_large_data() -> None:
+    """Demonstrate handling of large data that gets condensed."""
+    divider("LARGE DATA CONDENSING")
+    
+    # Create a large list
+    large_list = list(range(100))
+    
+    print("Table with large lists that get condensed:")
+    P.display_table(
+        ["Data Type", "Sample"],
+        [
+            ["Large list", large_list],
+            ["Large tuple", tuple(range(50))],
+            ["Large array", np.arange(75)],
+            ["Nested large lists", [list(range(30)), list(range(20))]],
+        ]
+    )
+
+def demo_styling_options() -> None:
+    """Demonstrate various styling options."""
+    divider("STYLING OPTIONS")
+    
+    # Basic styling with width
+    print("Custom width (50%):")
+    P.display_table(
+        ["Name", "Value"],
+        [["Alpha", 10], ["Beta", 20], ["Gamma", 30]],
+        width="50%"
+    )
+    
+    # Using caption
+    print("\nTable with caption:")
+    P.display_table(
+        ["Quarter", "Revenue", "Growth"],
+        [["Q1", "$10M", "+5%"], ["Q2", "$12M", "+20%"], ["Q3", "$15M", "+25%"]],
+        caption="Quarterly Financial Results"
+    )
+    
+    # Custom header and row styles
+    print("\nCustom header and row styles:")
+    P.display_table(
+        ["Name", "Score"],
+        [["Team A", 95], ["Team B", 88], ["Team C", 92]],
+        custom_header_style="background-color: #4CAF50; color: white; padding: 10px;",
+        custom_row_style="padding: 8px; text-align: center;"
+    )
+    
+    # Inline styles
+    print("\nInline styles:")
+    P.display_table(
+        ["Product", "Status"],
+        [["Widget A", "In Stock"], ["Widget B", "Out of Stock"], ["Widget C", "On Order"]],
+        border_radius="10px",
+        box_shadow="0 4px 8px rgba(0,0,0,0.1)",
+        margin_bottom="20px"
+    )
+
+def demo_compact_parameter() -> None:
+    """Demonstrate the compact parameter."""
+    divider("COMPACT PARAMETER")
+    
+    # Create a large list
+    large_list = list(range(100))
+    
+    print("Large data with compact=True (default):")
+    P.display_table(
+        ["Data Type", "Sample"],
+        [
+            ["Large list", large_list],
+            ["Large tuple", tuple(range(50))],
+            ["Large array", np.arange(75)]
+        ],
+        compact=True
+    )
+    
+    print("\nLarge data with compact=False (no condensing):")
+    P.display_table(
+        ["Data Type", "Sample"],
+        [
+            ["Large list", large_list],
+            ["Large tuple", tuple(range(50))],
+            ["Large array", np.arange(75)]
+        ],
+        compact=False
+    )
+
+def demo_table_display():
+    """Demo showcasing the table display feature."""
+
+    title("Table Display Examples")
+    demo_basic_tables()
+    
+    try:
+        demo_numpy_arrays()
+    except ImportError:
+        print("NumPy not available, skipping NumPy demos.")
+    
+    demo_dictionary_source()
+    demo_large_data()
+    demo_styling_options()
+    demo_compact_parameter()
+    
+    
+    
 
 def main():
     """Main function to run the examples."""
@@ -919,6 +1127,9 @@ def main():
 
     # Demo the new global shortcut functions
     demo_global_shortcuts()
+
+    # Demo the enhanced table display
+    demo_table_display()
 
     # Demo the enhanced code display features
     demo_enhanced_code_display()
