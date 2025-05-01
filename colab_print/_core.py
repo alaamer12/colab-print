@@ -8,7 +8,7 @@ import uuid
 import re
 import html
 import os
-from colab_print.utilities import DEFAULT_THEMES, SPECIAL_STYLES, process_animation_class
+from colab_print.utilities import DEFAULT_THEMES, SPECIAL_STYLES, process_animation_class, df_like
 from colab_print._exception import (ColabPrintError, TextError, ColorError,
                                     DisplayEnvironmentError, DisplayMethodError, DisplayUpdateError, ListError,
                                     StyleNotFoundError, StyleError,
@@ -19,6 +19,7 @@ from colab_print._exception import (ColabPrintError, TextError, ColorError,
                                     CodeParsingError, SyntaxHighlightingError, InvalidParameterError, AnimationError,
                                     ButtonError, ButtonCallbackError,
                                     MarkdownSourceError, MarkdownParsingError, MarkdownRenderingError)
+from collections.abc import Iterable, Mapping
 
 __all__ = [
     # Main classes
@@ -482,6 +483,139 @@ class TableDisplayer(Displayer):
 
         return table_style, th_style, td_style
 
+    def _condense(self, item, max_items: int = 5, recursive: bool = True) -> Any:
+        """
+        Condenses large iterables into a compact string representation.
+        
+        Args:
+            item: The item to potentially condense
+            max_items: Maximum number of items to display before condensing
+            recursive: Whether to recursively condense nested iterables
+            
+        Returns:
+            Condensed representation (maintaining structure where possible)
+        """
+        # Handle non-iterable types or special cases
+        if self._is_non_condensable_type(item):
+            return item
+
+        # Handle sequences like lists and tuples
+        if isinstance(item, (list, tuple)):
+            return self._condense_sequence(item, max_items, recursive)
+
+        # Handle other iterable types
+        return self._condense_generic_iterable(item, max_items)
+
+    @staticmethod
+    def _is_non_condensable_type(item) -> bool:
+        """
+        Determines if an item should not be condensed.
+        
+        Args:
+            item: The item to check
+            
+        Returns:
+            True if the item should not be condensed
+        """
+        # Strings are iterable but shouldn't be condensed
+        if isinstance(item, str):
+            return True
+
+        # Non-iterable types or mappings shouldn't be condensed
+        if not hasattr(item, '__iter__') or isinstance(item, Mapping):
+            return True
+
+        return False
+
+    def _condense_sequence(self, sequence, max_items: int, recursive: bool) -> Any:
+        """
+        Condenses a sequence (list, tuple) into a compact representation.
+        
+        Args:
+            sequence: The sequence to condense
+            max_items: Maximum number of items to display before condensing
+            recursive: Whether to recursively condense nested iterables
+            
+        Returns:
+            Condensed sequence or string representation
+        """
+        # Original type constructor
+        constructor = type(sequence)
+
+        # First check if the sequence itself is large and should be condensed
+        if hasattr(sequence, '__len__') and len(sequence) > max_items:
+            return self._format_condensed_representation(sequence)
+
+        # If not too large and recursive, process each element
+        if recursive:
+            processed_items = self._process_sequence_recursively(sequence, max_items)
+            return constructor(processed_items)
+
+        # For small collections, return as is
+        return sequence
+
+    def _process_sequence_recursively(self, sequence, max_items: int) -> list:
+        """
+        Processes each element in a sequence recursively.
+        
+        Args:
+            sequence: The sequence to process
+            max_items: Maximum number of items before condensing
+            
+        Returns:
+            List of processed items
+        """
+        processed_items = []
+        for element in sequence:
+            if hasattr(element, '__iter__') and not isinstance(element, (str, Mapping)):
+                if hasattr(element, '__len__') and len(element) > max_items:
+                    processed_items.append(self._format_condensed_representation(element))
+                else:
+                    processed_items.append(TableDisplayer._condense(self, element, max_items, True))
+            else:
+                processed_items.append(element)
+
+        return processed_items
+
+    @staticmethod
+    def _format_condensed_representation(items) -> str:
+        """
+        Creates a condensed string representation of an iterable.
+        
+        Args:
+            items: The iterable to condense
+            
+        Returns:
+            String representation showing first and last elements
+        """
+        try:
+            items_list = list(items)
+            first_items = ', '.join(str(items_list[i]) for i in range(min(2, len(items_list))))
+            last_items = ', '.join(str(items_list[i]) for i in range(max(0, len(items_list) - 2), len(items_list)))
+            return f"[{first_items}, ..., {last_items}]"
+        except (TypeError, ValueError):
+            # If we can't process it, return the original
+            return items
+
+    def _condense_generic_iterable(self, item, max_items: int) -> Any:
+        """
+        Condenses a generic iterable that's not a list or tuple.
+        
+        Args:
+            item: The iterable to condense
+            max_items: Maximum number of items before condensing
+            
+        Returns:
+            Original item or condensed string representation
+        """
+        try:
+            if hasattr(item, '__len__') and len(item) > max_items:
+                return self._format_condensed_representation(item)
+            return item
+        except (TypeError, ValueError):
+            # Fall back to original item
+            return item
+
     @staticmethod
     def _generate_table_caption(caption: Optional[str], style_base: str) -> List[str]:
         """
@@ -518,14 +652,14 @@ class TableDisplayer(Displayer):
         html.append('</tr>')
         return html
 
-    @staticmethod
-    def _generate_table_rows(rows: List[List[Any]], td_style: str) -> List[str]:
+    def _generate_table_rows(self, rows: List[Any], td_style: str, compact: bool = True) -> List[str]:
         """
         Generate HTML for the table data rows.
         
         Args:
             rows: List of rows, each row being a list of cell values
             td_style: CSS style for data cells
+            compact: Whether to condense large data structures
             
         Returns:
             List of HTML elements for data rows
@@ -534,7 +668,14 @@ class TableDisplayer(Displayer):
         for row in rows:
             html.append('<tr>')
             for cell in row:
-                html.append(f'<td style="{td_style}">{cell}</td>')
+                # Process cell content, condensing large nested iterables if compact=True
+                cell_value = self._condense(cell) if compact else cell
+
+                # Convert the processed cell to string for display
+                if not isinstance(cell_value, str):
+                    cell_value = str(cell_value)
+
+                html.append(f'<td style="{td_style}">{cell_value}</td>')
             html.append('</tr>')
         return html
 
@@ -563,36 +704,16 @@ class TableDisplayer(Displayer):
             # Process inline styles
             inline_style_string = self._process_inline_styles(inline_styles_dict)
 
-            # Get base styles for table components
-            if style not in self.styles:
-                raise StyleNotFoundError(style_name=style)
-
+            # Validate and get base styles
+            self._validate_style_exists(style)
             table_style, th_style, td_style = self._get_table_styles(style, width)
 
-            # Check for conflicting styles
-            if custom_header_style and 'text-align:' in custom_header_style and 'text-align:' in th_style:
-                raise StyleConflictError(
-                    style1="default header style",
-                    style2="custom header style",
-                    message="Conflicting text-align properties in header styles"
-                )
+            # Check for style conflicts and apply custom styles
+            th_style = self._apply_custom_header_style(th_style, custom_header_style)
+            td_style = self._apply_custom_row_style(td_style, custom_row_style)
 
-            if custom_row_style and 'text-align:' in custom_row_style and 'text-align:' in td_style:
-                raise StyleConflictError(
-                    style1="default row style",
-                    style2="custom row style",
-                    message="Conflicting text-align properties in row styles"
-                )
-
-            # Apply custom styles if provided
-            if custom_header_style:
-                th_style = custom_header_style
-            if custom_row_style:
-                td_style = custom_row_style
-
-            # Add inline styles to the table style
-            if inline_style_string:
-                table_style = f"{table_style} {inline_style_string}"
+            # Combine table style with inline styles
+            table_style = self._combine_table_and_inline_styles(table_style, inline_style_string)
 
             return table_style, th_style, td_style, inline_style_string
 
@@ -601,9 +722,93 @@ class TableDisplayer(Displayer):
         except Exception as e:
             raise StyleError(f"Error processing table styles: {str(e)}")
 
+    def _validate_style_exists(self, style: str) -> None:
+        """
+        Validate that the specified style exists in available styles.
+        
+        Args:
+            style: Named style to validate
+            
+        Raises:
+            StyleNotFoundError: If the style is not found
+        """
+        if style not in self.styles:
+            raise StyleNotFoundError(style_name=style)
+
+    @staticmethod
+    def _apply_custom_header_style(base_th_style: str, custom_header_style: Optional[str]) -> str:
+        """
+        Apply custom header style, checking for conflicts.
+        
+        Args:
+            base_th_style: Base header style
+            custom_header_style: Custom header style to apply
+            
+        Returns:
+            Final header style
+            
+        Raises:
+            StyleConflictError: If there are conflicting styles
+        """
+        if not custom_header_style:
+            return base_th_style
+
+        if 'text-align:' in custom_header_style and 'text-align:' in base_th_style:
+            raise StyleConflictError(
+                style1="default header style",
+                style2="custom header style",
+                message="Conflicting text-align properties in header styles"
+            )
+
+        return custom_header_style
+
+    @staticmethod
+    def _apply_custom_row_style(base_td_style: str, custom_row_style: Optional[str]) -> str:
+        """
+        Apply custom row style, checking for conflicts.
+        
+        Args:
+            base_td_style: Base row style
+            custom_row_style: Custom row style to apply
+            
+        Returns:
+            Final row style
+            
+        Raises:
+            StyleConflictError: If there are conflicting styles
+        """
+        if not custom_row_style:
+            return base_td_style
+
+        if 'text-align:' in custom_row_style and 'text-align:' in base_td_style:
+            raise StyleConflictError(
+                style1="default row style",
+                style2="custom row style",
+                message="Conflicting text-align properties in row styles"
+            )
+
+        return custom_row_style
+
+    @staticmethod
+    def _combine_table_and_inline_styles(table_style: str, inline_style_string: str) -> str:
+        """
+        Combine table style with inline styles.
+        
+        Args:
+            table_style: Base table style
+            inline_style_string: Inline styles to add
+            
+        Returns:
+            Combined table style
+        """
+        if inline_style_string:
+            return f"{table_style} {inline_style_string}"
+        return table_style
+
     def _build_table_html(self, headers: List[str], rows: List[List[Any]],
                           table_style: str, th_style: str, td_style: str,
-                          caption: Optional[str], inline_style_string: str) -> List[str]:
+                          caption: Optional[str], inline_style_string: str,
+                          compact: bool = True) -> List[str]:
         """
         Build the HTML components for the table.
         
@@ -615,6 +820,7 @@ class TableDisplayer(Displayer):
             td_style: CSS style for data cells
             caption: Optional table caption
             inline_style_string: Additional CSS styles
+            compact: Whether to condense large data structures
             
         Returns:
             List of HTML elements for the complete table
@@ -632,7 +838,7 @@ class TableDisplayer(Displayer):
             html.extend(self._generate_table_header(headers, th_style))
 
             # Add data rows
-            html.extend(self._generate_table_rows(rows, td_style))
+            html.extend(self._generate_table_rows(rows, td_style, compact))
 
             # Close the table
             html.append('</table>')
@@ -667,42 +873,150 @@ class TableDisplayer(Displayer):
         except Exception as e:
             raise HTMLRenderingError(f"Failed to render HTML table: {str(e)}") from e
 
-    def display(self, headers: List[str], rows: List[List[Any]], *,
+    def _process_dict_source(self, source_dict: Dict[Any, Any]) -> Tuple[List[str], List[List[Any]]]:
+        """
+        Process a dictionary data source into headers and rows.
+        
+        Args:
+            source_dict: Dictionary to use as the data source
+            
+        Returns:
+            Tuple of (headers, rows)
+            
+        Raises:
+            TableError: If source_dict is not a dictionary
+        """
+        if not isinstance(source_dict, Mapping):
+            raise TableError(f"source_dict must be a dictionary, got {type(source_dict).__name__}")
+
+        # Convert dict to headers and rows
+        headers = list(source_dict.keys())
+
+        # If the values are scalars, make a single row with those values
+        if all(not hasattr(v, '__iter__') or isinstance(v, (str, bytes)) for v in source_dict.values()):
+            rows = [list(source_dict.values())]
+        else:
+            rows = self._transpose_dict_values(source_dict)
+
+        return headers, rows
+
+    @staticmethod
+    def _transpose_dict_values(source_dict: Dict[Any, Any]) -> List[List[Any]]:
+        """
+        Transpose dictionary values into rows.
+        
+        For dict values that are iterables, each key-value pair becomes a column 
+        where the key is the header and the values become entries in multiple rows.
+        
+        Args:
+            source_dict: Dictionary with iterable values
+            
+        Returns:
+            List of rows
+        """
+        # First, ensure all values are iterables with same length
+        values = []
+        for v in source_dict.values():
+            if not hasattr(v, '__iter__') or isinstance(v, (str, bytes)):
+                # Convert scalar to a single-item list
+                values.append([v])
+            else:
+                # Convert to list if it's not already
+                values.append(list(v))
+
+        # Get the maximum length of all value lists
+        max_len = max(len(v) for v in values)
+
+        # Pad shorter lists with None
+        for i, v in enumerate(values):
+            if len(v) < max_len:
+                values[i] = v + [None] * (max_len - len(v))
+
+        # Transpose to get rows
+        rows = [[] for _ in range(max_len)]
+        for v in values:
+            for i, item in enumerate(v):
+                rows[i].append(item)
+
+        return rows
+
+    @staticmethod
+    def _prepare_inline_styles(inline_styles: Dict[str, str], width: str) -> Dict[str, str]:
+        """
+        Prepare inline styles, ensuring width parameter takes precedence.
+        
+        Args:
+            inline_styles: Dictionary of inline styles
+            width: Width parameter that should take precedence
+            
+        Returns:
+            Processed inline styles dictionary
+        """
+        inline_styles_dict = dict(inline_styles)
+        if 'width' in inline_styles_dict:
+            del inline_styles_dict['width']  # Ensure our width parameter takes precedence
+        return inline_styles_dict
+
+    def display(self, headers: Optional[List[str]] = None, rows: Optional[Iterable[Any]] = None, *,
+                source_dict: Optional[Dict[Any, Any]] = None,
                 style: str = 'default', width: str = '100%',
                 caption: Optional[str] = None,
                 custom_header_style: Optional[str] = None,
                 custom_row_style: Optional[str] = None,
+                compact: bool = True,
                 **inline_styles) -> None:
         """
         Display a table with the given headers and rows.
         
         Args:
-            headers: List of column headers
-            rows: List of rows, each row being a list of cell values
-            style: Named style from the available styles
+            headers: List of column headers (optional if source_dict is provided)
+            rows: List of rows, each row being any iterable (list, tuple, array, etc.) of cell values (optional if source_dict is provided)
+            source_dict: Dictionary to use as the data source (keys become headers, values become rows)
+            style: Named style from available styles
             width: Width of the table (CSS value)
             caption: Optional table caption
             custom_header_style: Optional custom CSS for header cells
             custom_row_style: Optional custom CSS for data cells
+            compact: Whether to condense large data structures (default: True)
             **inline_styles: Additional CSS styles to apply to the table
+            
+        Raises:
+            TableError: If there's an issue with the table data
+            StyleNotFoundError: If specified style is not found
+            DisplayEnvironmentError: If display environment is not available
         """
-        # Process inline styles (but don't let them override the width)
-        inline_styles_dict = dict(inline_styles)
-        if 'width' in inline_styles_dict:
-            del inline_styles_dict['width']  # Ensure our width parameter takes precedence
+        try:
+            # Handle dictionary input
+            if source_dict is not None:
+                headers, rows = self._process_dict_source(source_dict)
 
-        # Process all styles
-        table_style, th_style, td_style, inline_style_string = self._process_styles(
-            style, width, custom_header_style, custom_row_style, inline_styles_dict
-        )
+            # Validate required inputs
+            if headers is None or rows is None:
+                raise TableError("Either provide both headers and rows, or a source_dict")
 
-        # Build HTML components
-        html = self._build_table_html(
-            headers, rows, table_style, th_style, td_style, caption, inline_style_string
-        )
+            # Process inline styles
+            inline_styles_dict = self._prepare_inline_styles(inline_styles, width)
 
-        # Display the final HTML
-        self._display_html(html, headers, rows)
+            # Process all styles
+            table_style, th_style, td_style, inline_style_string = self._process_styles(
+                style, width, custom_header_style, custom_row_style, inline_styles_dict
+            )
+
+            # Build HTML components
+            html = self._build_table_html(
+                headers, rows, table_style, th_style, td_style, caption, inline_style_string, compact
+            )
+
+            # Display the final HTML
+            self._display_html(html, headers, rows)
+
+        except Exception as e:
+            if isinstance(e, (TableError, StyleNotFoundError, DisplayEnvironmentError)):
+                # Pass through known exceptions
+                raise
+            else:
+                # Wrap unknown exceptions
+                raise TableError(f"Error displaying table: {str(e)}")
 
 
 class DFDisplayer(Displayer):
@@ -3364,41 +3678,203 @@ class Printer:
             # Wrap unknown exceptions
             raise TextError(f"Error displaying text: {str(e)}") from e
 
-    def display_table(self, headers: List[str], rows: List[List[Any]], *,
-                      style: str = 'default', **table_options) -> None:
+    # noinspection da,PyUnresolvedReferences
+    def display_table(self, headers: Optional[List[str]] = None, rows: Optional[List[Any]] = None, *,
+                      source_dict: Optional[Dict[Any, Any]] = None,
+                      style: str = 'default', width: str = '100%',
+                      caption: Optional[str] = None,
+                      custom_header_style: Optional[str] = None,
+                      custom_row_style: Optional[str] = None,
+                      compact: bool = True,
+                      **table_options) -> None:
         """
         Display a table with the given headers and rows.
         
         Args:
-            headers: List of column headers
-            rows: List of rows, each row being a list of cell values
+            headers: List of column headers (optional if source_dict is provided)
+            rows: List of rows, each row being any iterable (list, tuple, array, etc.) of cell values (optional if source_dict is provided)
+            source_dict: Dictionary to use as the data source (keys become headers, values become rows)
             style: Named style from available styles
+            width: Width of the table (CSS value)
+            caption: Optional table caption
+            custom_header_style: Optional custom CSS for header cells
+            custom_row_style: Optional custom CSS for data cells
+            compact: Whether to condense large data structures (default: True)
             **table_options: Additional table styling options
             
         Raises:
             TableError: If there's an issue with the table data
             StyleNotFoundError: If specified style is not found
             DisplayEnvironmentError: If display environment is not available
+        
+        Examples:
+            >>> # Basic table with headers and rows
+            >>> printer.display_table(['Name', 'Age'], [['Alice', 30], ['Bob', 25]])
+            >>>
+            >>> # Table from a dictionary (keys become headers, values become rows)
+            >>> printer.display_table(source_dict={'Name': ['Alice', 'Bob'], 'Age': [30, 25]})
+            >>>
+            >>> # Dictionary with scalar values (creates a single-row table)
+            >>> printer.display_table(source_dict={'Product': 'Widget', 'Price': 19.99, 'Stock': 42})
+            >>>
+            >>> # Display a table with large data structures without condensing
+            >>> printer.display_table(['Data'], [[list(range(100))]], compact=False)
         """
+        # Check if rows is a dataframe-like object
+        if df_like(rows):
+            raise ValueError("rows is a dataframe-like object. Use display_df instead.")
+
         try:
-            # Validate input
-            if not isinstance(headers, list):
-                raise TableError(f"Headers must be a list, got {type(headers).__name__}")
-
-            if not isinstance(rows, list):
-                raise TableError(f"Rows must be a list, got {type(rows).__name__}")
-
-            for i, row in enumerate(rows):
-                if not isinstance(row, list):
-                    raise TableError(f"Row {i} must be a list, got {type(row).__name__}")
-
-            self.table_displayer.display(headers, rows, style=style, **table_options)
+            self._validate_table_inputs(headers, rows, source_dict)
+            params = self._prepare_table_params(
+                headers, rows, source_dict, style, width,
+                caption, custom_header_style, custom_row_style,
+                compact, table_options
+            )
+            self.table_displayer.display(**params)
         except (TableError, StyleNotFoundError, DisplayEnvironmentError) as e:
             # Pass through known exceptions
             raise
         except Exception as e:
             # Wrap unknown exceptions
             raise TableError(f"Error displaying table: {str(e)}")
+
+    def _validate_table_inputs(self, headers: Optional[List[str]],
+                               rows: Optional[List[Any]],
+                               source_dict: Optional[Dict[Any, Any]]) -> None:
+        """
+        Validate the input parameters for table display.
+        
+        Args:
+            headers: List of column headers
+            rows: List of rows (or any iterable of iterables)
+            source_dict: Dictionary to use as the data source
+            
+        Raises:
+            TableError: If there's an issue with the table data
+        """
+        # If source_dict is provided, we'll handle dictionary validation at the displayer level
+        if source_dict is not None:
+            if not isinstance(source_dict, Mapping):
+                raise TableError(f"source_dict must be a dictionary, got {type(source_dict).__name__}")
+        # If using traditional approach, validate headers and rows
+        elif headers is not None and rows is not None:
+            if not isinstance(headers, list):
+                raise TableError(f"Headers must be a list, got {type(headers).__name__}")
+
+            # Check if rows is any iterable instead of strictly a list
+            try:
+                iter(rows)
+            except TypeError:
+                raise TableError(f"Rows must be iterable, got {type(rows).__name__}")
+
+            # Convert rows to list if it has a to_list() or tolist() method
+            rows = self._try_convert_to_list(rows)
+
+            self._validate_row_iterability(rows)
+        else:
+            raise TableError("Either provide both headers and rows, or a source_dict")
+
+    @staticmethod
+    def _try_convert_to_list(rows: Iterable[Any]) -> List[Any]:
+        """
+        Try to convert an iterable to a list.
+        
+        Args:
+            rows: Iterable to convert
+            
+        Returns:
+            List of rows
+        """
+        try:
+            list_rows = list(rows)
+        except Exception:
+            pass
+        else:
+            return list_rows
+
+        if hasattr(rows, 'to_list') and callable(rows.to_list):
+            rows = rows.to_list()
+        elif hasattr(rows, 'tolist') and callable(rows.tolist):
+            rows = rows.tolist()
+        elif hasattr(rows, 'to_list'):
+            rows = rows.to_list
+        elif hasattr(rows, 'tolist'):
+            rows = rows.tolist
+        else:
+            rows = rows
+        return rows
+
+    @staticmethod
+    def _validate_row_iterability(rows: List[Any]) -> None:
+        """
+        Validate that each row is an iterable but not a mapping.
+        
+        Args:
+            rows: List of rows to validate
+            
+        Raises:
+            TableError: If any row is not iterable or is a mapping
+        """
+        for i, row in enumerate(rows):
+            # Accept any non-mapping iterable
+            if isinstance(row, Mapping):
+                raise TableError(f"Row {i} cannot be a mapping type (e.g., dict), got {type(row).__name__}")
+
+            try:
+                # Just verify it's iterable
+                iter(row)
+            except TypeError:
+                raise TableError(f"Row {i} must be iterable, got {type(row).__name__}")
+
+    @staticmethod
+    def _prepare_table_params(headers: Optional[List[str]],
+                              rows: Optional[List[Any]],
+                              source_dict: Optional[Dict[Any, Any]],
+                              style: str, width: str,
+                              caption: Optional[str],
+                              custom_header_style: Optional[str],
+                              custom_row_style: Optional[str],
+                              compact: bool,
+                              table_options: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Prepare parameters for the table displayer.
+        
+        Args:
+            headers: List of column headers
+            rows: List of rows
+            source_dict: Dictionary to use as the data source
+            style: Named style from available styles
+            width: Width of the table
+            caption: Optional table caption
+            custom_header_style: Optional custom CSS for header cells
+            custom_row_style: Optional custom CSS for data cells
+            compact: Whether to condense large data structures
+            table_options: Additional table styling options
+            
+        Returns:
+            Dictionary of parameters for the table displayer
+        """
+        # Extract explicitly defined parameters
+        explicit_params = {
+            'headers': headers,
+            'rows': rows,
+            'source_dict': source_dict,
+            'style': style,
+            'width': width,
+            'caption': caption,
+            'custom_header_style': custom_header_style,
+            'custom_row_style': custom_row_style,
+            'compact': compact
+        }
+
+        # Remove None values to use defaults from the display method
+        params = {k: v for k, v in explicit_params.items() if v is not None}
+
+        # Merge with any additional table_options
+        params.update(table_options)
+
+        return params
 
     def display_df(self, df: pd.DataFrame, *,
                    style: str = 'default',
@@ -3441,6 +3917,11 @@ class Printer:
             InvalidParameterError: If invalid parameters are provided
             DisplayEnvironmentError: If display environment is not available
         """
+
+        # Check if not df is a dataframe-like object
+        if not df_like(df):
+            raise ValueError("df is not a dataframe-like object. Use display_table instead.")
+
         try:
             # Check if pandas is available
             if 'pandas.core.frame.DataFrame' not in str(type(df)):
@@ -3635,7 +4116,7 @@ class Printer:
         Args:
             source: The URL or file path of the markdown file to display
             is_url: If True, treat source as a URL; if False, treat as a file path
-            style: Named style from available styles
+            style: Named style from the available styles
             animate: Animation effect from Animate.css (e.g., 'fadeIn', 'bounceOut')
             **inline_styles: Additional CSS styles to apply to the container
             
