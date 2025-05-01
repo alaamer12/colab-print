@@ -1,6 +1,6 @@
 [project]
 name = "colab-print"
-version = "0.4.0"
+version = "0.4.1"
 description = "Enhanced display utilities for Jupyter/Colab notebooks with customizable styles"
 readme = "README.md"
 requires-python = ">=3.8"

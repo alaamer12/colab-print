@@ -1,7 +1,9 @@
 # Text display shortcuts - primary display styles
-from colab_print._core import Printer
 from typing import Optional, Any, List, Dict, Union, Callable, Literal
+
 import pandas as pd
+
+from colab_print._core import Printer
 
 P = Printer()
 
@@ -481,10 +483,10 @@ def mermaid(diagram: str, *,
 
 
 def md(source: str, *,
-        is_url: bool = False,
-        style: str = 'default',
-        animate: Optional[str] = None,
-        **inline_styles) -> None:
+       is_url: bool = False,
+       style: str = 'default',
+       animate: Optional[str] = None,
+       **inline_styles) -> None:
     """
     Display markdown content from a URL or file with read more/less functionality.
     

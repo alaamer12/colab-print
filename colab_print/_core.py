@@ -1,14 +1,16 @@
 # noinspection PyUnresolvedReferences
-from IPython.display import display as ip_display, HTML, Javascript
-import pandas as pd
-from typing import Callable, Optional, Union, Dict, List, Any, Tuple, Literal
 import abc
-import warnings
-import uuid
-import re
 import html
 import os
-from colab_print.utilities import DEFAULT_THEMES, SPECIAL_STYLES, process_animation_class, df_like
+import re
+import uuid
+import warnings
+from collections.abc import Iterable, Mapping
+from typing import Callable, Optional, Union, Dict, List, Any, Tuple, Literal
+
+import pandas as pd
+from IPython.display import display as ip_display, HTML, Javascript
+
 from colab_print._exception import (ColabPrintError, TextError, ColorError,
                                     DisplayEnvironmentError, DisplayMethodError, DisplayUpdateError, ListError,
                                     StyleNotFoundError, StyleError,
@@ -19,7 +21,7 @@ from colab_print._exception import (ColabPrintError, TextError, ColorError,
                                     CodeParsingError, SyntaxHighlightingError, InvalidParameterError, AnimationError,
                                     ButtonError, ButtonCallbackError,
                                     MarkdownSourceError, MarkdownParsingError, MarkdownRenderingError)
-from collections.abc import Iterable, Mapping
+from colab_print.utilities import DEFAULT_THEMES, SPECIAL_STYLES, process_animation_class, df_like
 
 __all__ = [
     # Main classes
@@ -681,7 +683,7 @@ class TableDisplayer(Displayer):
 
     def _process_styles(self, style: str, width: str, custom_header_style: Optional[str],
                         custom_row_style: Optional[str], inline_styles_dict: Dict[str, str]) -> Tuple[
-                        str, str, str, str]:
+        str, str, str, str]:
         """
         Process and prepare all styles for the table.
         

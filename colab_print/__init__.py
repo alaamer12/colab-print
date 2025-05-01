@@ -72,10 +72,9 @@ from colab_print.utilities import (DEFAULT_THEMES, SPECIAL_STYLES, VALID_ANIMATI
                                    process_animation_class, is_in_notebook,
                                    DFDisplayParams, TableDisplayParams)
 
-
 P = Printer()
 
-__version__ = "0.4.0"
+__version__ = "0.4.1"
 __author__ = "alaamer12"
 __email__ = "ahmedmuhmmed239@gmail.com"
 __license__ = "MIT"
@@ -122,7 +121,7 @@ __author_email__ = "ahmedmuhmmed239@gmail.com"
 __all__ = [
     # Classes
     "Printer",
-    "DFDisplayParams", 
+    "DFDisplayParams",
     "TableDisplayParams",
 
     # Functions

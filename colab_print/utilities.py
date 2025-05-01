@@ -167,7 +167,7 @@ SPECIAL_STYLES = {
     'secondary': 'color: #9B59B6; font-size: 16px; font-weight: 600; font-family: Arial, sans-serif; letter-spacing: 0.3px; background-color: rgba(155, 89, 182, 0.08); padding: 6px 10px; border-radius: 4px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); display: block; margin: 25px 0; clear: both;',
 
     'progress': 'color: #2C3E50; font-size: 14px; font-weight: 500; font-family: "Segoe UI", Roboto, sans-serif; background: linear-gradient(to right, #f7f9fc, #edf2f7); padding: 18px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.04), 0 0 1px rgba(0,0,0,0.1); margin: 24px 0; border: none; display: block; clear: both;',
-    
+
     'interactive_button': 'background-color: #3498db; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 8px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 6px rgba(0,0,0,0.1); position: relative; outline: none;',
 }
 
@@ -192,15 +192,15 @@ def process_animation_class(animate: Optional[str]) -> Optional[str]:
     """
     if animate is None:
         return None
-    
+
     # Split and extract components
     parts = _split_animation_string(animate)
     base_animation = _extract_base_animation(parts)
     additional_configs = _extract_additional_configs(parts)
-    
+
     # Validate the animation name
     valid_animation_name = _validate_animation_name(base_animation)
-    
+
     # Construct the final result
     return _build_animation_class_string(valid_animation_name, additional_configs)
 
@@ -213,20 +213,20 @@ def _split_animation_string(animate: str) -> List[str]:
 def _extract_base_animation(parts: List[str]) -> str:
     """Extract the base animation name from the parts list."""
     base_animation = parts[0]
-    
+
     # Clean up the base animation name
     if base_animation.startswith('animate__animated'):
         base_animation = parts[1].replace('animate__', '')
     elif base_animation.startswith('animate__'):
         base_animation = base_animation.replace('animate__', '')
-    
+
     return base_animation
 
 
 def _extract_additional_configs(parts: List[str]) -> List[str]:
     """Extract and format additional configuration classes."""
     additional_configs = []
-    
+
     # Process any additional configuration classes
     for part in parts[1:]:
         if part != 'animate__animated':  # Skip if it's the animated class
@@ -235,7 +235,7 @@ def _extract_additional_configs(parts: List[str]) -> List[str]:
                 additional_configs.append(f"animate__{part}")
             else:
                 additional_configs.append(part)
-    
+
     return additional_configs
 
 
@@ -253,14 +253,14 @@ def _validate_animation_name(base_animation: str) -> str:
         if valid_name.lower() == base_animation.lower():
             valid_animation_name = valid_name
             break
-    
+
     if valid_animation_name is None:
         raise AnimationError(
             animation_name=base_animation,
             message=f"Invalid animation name: '{base_animation}'. Valid animations are: {', '.join(VALID_ANIMATIONS[:10])}... "
                     f"See https://animate.style/ for the complete list."
         )
-    
+
     return valid_animation_name
 
 
@@ -268,11 +268,11 @@ def _build_animation_class_string(valid_animation_name: str, additional_configs:
     """Build the final animation class string with all components."""
     # Construct the final animation class string
     result = f"animate__animated animate__{valid_animation_name}"
-    
+
     # Add any additional configuration classes
     if additional_configs:
         result += " " + " ".join(additional_configs)
-    
+
     return result
 
 
@@ -294,6 +294,7 @@ def is_in_notebook() -> bool:
     except ImportError:
         return False
 
+
 def df_like(df, debug: bool = False, threshold: float = 0.7) -> bool:
     """
     Check if an object is dataframe-like by examining common dataframe attributes and methods.
@@ -310,56 +311,57 @@ def df_like(df, debug: bool = False, threshold: float = 0.7) -> bool:
     """
     if df is None:
         return False
-    
+
     # Define common properties (attributes) found in dataframes
     properties = [
-        'shape',      # Tuple of (rows, columns)
-        'columns',    # Column labels
-        'index',      # Row labels
-        'values',     # Underlying data as array
-        'dtypes',     # Data types of columns
+        'shape',  # Tuple of (rows, columns)
+        'columns',  # Column labels
+        'index',  # Row labels
+        'values',  # Underlying data as array
+        'dtypes',  # Data types of columns
     ]
-    
+
     # Define common methods found in dataframes
     methods = [
-        'head',        # Return first n rows
-        'tail',        # Return last n rows
-        'describe',    # Generate descriptive statistics
-        'copy',        # Return a copy of the dataframe
-        'iloc',        # Integer-location based indexing
-        'loc',         # Label-based indexing
-        'apply',       # Apply a function
+        'head',  # Return first n rows
+        'tail',  # Return last n rows
+        'describe',  # Generate descriptive statistics
+        'copy',  # Return a copy of the dataframe
+        'iloc',  # Integer-location based indexing
+        'loc',  # Label-based indexing
+        'apply',  # Apply a function
     ]
-    
+
     # Check properties - they should exist as attributes
     property_count = sum(hasattr(df, prop) for prop in properties)
-    
+
     # Check methods - they should be callable
     method_count = sum(hasattr(df, method) and callable(getattr(df, method)) for method in methods)
-    
+
     # Calculate total score
     total_items = len(properties) + len(methods)
     total_present = property_count + method_count
-    
+
     # We consider it dataframe-like if it has at least 70% of the common attributes and methods
     _threshold = threshold * total_items
-    
+
     if debug:
         # For debugging (can be removed in production)
         from pprint import pprint
-        print("*"*100)
+        print("*" * 100)
 
         pprint(f"{properties = }")
         pprint(f"{methods = }")
 
-        print("*"*50)
+        print("*" * 50)
         print(f"Properties: {property_count}/{len(properties)}")
         print(f"Methods: {method_count}/{len(methods)}")
         print(f"Total: {total_present}/{total_items} (threshold: {threshold})")
 
-        print("*"*100)
-    
+        print("*" * 100)
+
     return total_present >= _threshold
+
 
 def array_like(obj) -> bool:
     """
@@ -377,80 +379,80 @@ def array_like(obj) -> bool:
     """
     if obj is None:
         return False
-        
+
     # Define common properties (attributes) found in arrays
     properties = [
-        'shape',      # Dimensions of the array
-        'size',       # Total number of elements
-        'ndim',       # Number of dimensions
-        'dtype',      # Data type of elements
-        'T',          # Transpose of the array
-        'flat',       # Flattened version of the array
-        'real',       # Real part of complex array
-        'imag'        # Imaginary part of complex array
+        'shape',  # Dimensions of the array
+        'size',  # Total number of elements
+        'ndim',  # Number of dimensions
+        'dtype',  # Data type of elements
+        'T',  # Transpose of the array
+        'flat',  # Flattened version of the array
+        'real',  # Real part of complex array
+        'imag'  # Imaginary part of complex array
     ]
-    
+
     # Define common methods found in arrays
     methods = [
-        'reshape',    # Change shape of array
+        'reshape',  # Change shape of array
         'transpose',  # Transpose dimensions
-        'flatten',    # Return flattened copy
-        'astype',     # Convert to different type
-        'copy',       # Return a copy
-        'sum',        # Sum of elements
-        'mean',       # Mean of elements
-        'min',        # Minimum value
-        'max',        # Maximum value
-        'argmin',     # Index of minimum value
-        'argmax',     # Index of maximum value
-        'all',        # Test if all elements are True
-        'any',        # Test if any element is True
-        'tolist',     # Convert to list
-        '__getitem__' # Support for indexing/slicing
+        'flatten',  # Return flattened copy
+        'astype',  # Convert to different type
+        'copy',  # Return a copy
+        'sum',  # Sum of elements
+        'mean',  # Mean of elements
+        'min',  # Minimum value
+        'max',  # Maximum value
+        'argmin',  # Index of minimum value
+        'argmax',  # Index of maximum value
+        'all',  # Test if all elements are True
+        'any',  # Test if any element is True
+        'tolist',  # Convert to list
+        '__getitem__'  # Support for indexing/slicing
     ]
-    
+
     # Special handling for sequence protocol
     try:
         len(obj)
         has_len = True
     except (TypeError, AttributeError):
         has_len = False
-    
+
     try:
         _ = obj[0]
         has_getitem = True
     except (TypeError, IndexError, AttributeError):
         has_getitem = False
-    
+
     # Check properties - they should exist as attributes
     property_count = sum(hasattr(obj, prop) for prop in properties)
-    
+
     # Check methods - they should be callable
     method_count = sum(hasattr(obj, method) and callable(getattr(obj, method)) for method in methods)
-    
+
     # Calculate total score from standard properties and methods
     total_items = len(properties) + len(methods)
     total_present = property_count + method_count
-    
+
     # Add sequence protocol checks
     if has_len:
         total_present += 1
     if has_getitem:
         total_present += 1
     total_items += 2
-    
+
     # Special case for standard Python lists/tuples
     if isinstance(obj, (list, tuple)) and has_len and has_getitem:
         return True
-    
+
     # We consider it array-like if it has at least 50% of the common attributes and methods
     # Lower threshold than dataframe check because array implementations vary more
     threshold = 0.5 * total_items
-    
+
     # For debugging (can be removed in production)
     # print(f"Properties: {property_count}/{len(properties)}")
     # print(f"Methods: {method_count}/{len(methods)}")
     # print(f"Sequence protocol: {has_len + has_getitem}/2")
     # print(f"Total: {total_present}/{total_items} (threshold: {threshold})")
-    
+
     return total_present >= threshold

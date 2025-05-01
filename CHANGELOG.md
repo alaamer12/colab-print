@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] - 2025-05-05
+
+### Added
+- Introduced new `compact` parameter to TableDisplayer to control data condensing behavior
+  - Set `compact=True` (default) to condense large data structures for better readability
+  - Set `compact=False` to display all data without condensing
+- Added support for a wider range of iterable data structures in table display
+- Added automatic detection and conversion of data structures with `to_list()` or `tolist()` methods
+
+### Fixed
+- Fixed bug where TableDisplayer strictly required Python lists for the `rows` parameter
+- Fixed inconsistency in condensing behavior where some data structures were condensed while others were not
+- Fixed display issues with NumPy arrays and other array-like objects
+
+### Improved
+- Made TableDisplayer more robust with improved type handling and validation
+- Enhanced support for dictionaries and dictionary-like data sources
+- Better handling of large data structures with more consistent condensing behavior
+- Code refactoring for cleaner, more maintainable data processing and validation
+
 ## [0.4.0] - 2025-05-01
 
 ### Added
