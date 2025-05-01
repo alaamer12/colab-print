@@ -66,7 +66,7 @@ from colab_print.functions import (code, dfd, card, info, badge, dict_, error,
                                    list_, muted, quote, table, title, header,
                                    footer, mermaid, primary, success, warning,
                                    progress, data_highlight, secondary, section_divider,
-                                   highlight, subheader, subtitle, button)
+                                   highlight, subheader, subtitle, button, md)
 
 from colab_print.utilities import (DEFAULT_THEMES, SPECIAL_STYLES, VALID_ANIMATIONS,
                                    process_animation_class, is_in_notebook,
@@ -130,7 +130,7 @@ __all__ = [
     "list_", "muted", "quote", "table", "title", "header",
     "footer", "mermaid", "primary", "success", "warning",
     "progress", "data_highlight", "secondary", "section_divider",
-    "highlight", "subheader", "subtitle", "button",
+    "highlight", "subheader", "subtitle", "button", "md",
 
     # Utilities
     "process_animation_class", "is_in_notebook",

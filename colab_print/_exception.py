@@ -157,6 +157,39 @@ class MermaidError(ContentTypeError):
         super().__init__(expected_type="str", message=message)
 
 
+class MarkdownError(ContentTypeError):
+    """Exception raised for markdown content issues."""
+
+    def __init__(self, message="Markdown content error"):
+        super().__init__(expected_type="str", message=message)
+
+
+class MarkdownSourceError(MarkdownError):
+    """Exception raised when there's an issue with the markdown source (file or URL)."""
+
+    def __init__(self, source="Unknown", is_url=False, message=None):
+        source_type = "URL" if is_url else "file path"
+        if message is None:
+            message = f"Error accessing markdown content from {source_type}: {source}"
+        super().__init__(message)
+        self.source = source
+        self.is_url = is_url
+
+
+class MarkdownParsingError(MarkdownError):
+    """Exception raised when parsing markdown content fails."""
+
+    def __init__(self, message="Failed to parse markdown content"):
+        super().__init__(message)
+
+
+class MarkdownRenderingError(MarkdownError):
+    """Exception raised when rendering markdown content fails."""
+
+    def __init__(self, message="Failed to render markdown content"):
+        super().__init__(message)
+
+
 # Formatting and Parameter Exceptions
 class FormattingError(ColabPrintError):
     """Exception raised for formatting issues."""

@@ -11,7 +11,7 @@ __all__ = [
     "code", "card", "quote", "badge", "data_highlight", "footer",
     "highlight", "info", "success", "warning", "error", "muted",
     "primary", "secondary", "dfd", "table", "list_", "dict_",
-    "progress", "mermaid", "button"
+    "progress", "mermaid", "md", "button"
 ]
 
 
@@ -442,12 +442,12 @@ def mermaid(diagram: str, *,
             custom_css: Optional[Dict[str, str]] = None,
             **inline_styles) -> None:
     """
-    Display a Mermaid diagram with optional custom styling.
+    Display a Mermaid diagram with syntax highlighting.
     
     Args:
-        diagram: Mermaid diagram definition or file path to a Mermaid diagram file
+        diagram: Mermaid diagram code or file path
         theme: Mermaid theme ('default', 'forest', 'dark', 'neutral')
-        style: Named style for the container from available styles
+        style: Named style from available styles for the container
         custom_css: Optional dictionary mapping Mermaid CSS selectors to style properties
         **inline_styles: Additional CSS styles to apply to the container
         
@@ -471,7 +471,44 @@ def mermaid(diagram: str, *,
         ... '.edgeLabel': 'background-color: white; padding: 2px;'
         ... })
     """
-    P.display_mermaid(diagram, style=style, theme=theme, custom_css=custom_css, **inline_styles)
+    P.display_mermaid(
+        diagram,
+        theme=theme,
+        style=style,
+        custom_css=custom_css,
+        **inline_styles
+    )
+
+
+def md(source: str, *,
+        is_url: bool = False,
+        style: str = 'default',
+        animate: Optional[str] = None,
+        **inline_styles) -> None:
+    """
+    Display markdown content from a URL or file with read more/less functionality.
+    
+    Args:
+        source: The URL or file path of the markdown file to display
+        is_url: If True, treat source as a URL; if False, treat as a file path
+        style: Named style from available styles
+        animate: Animation effect from Animate.css (e.g., 'fadeIn', 'bounceOut')
+        **inline_styles: Additional CSS styles to apply to the container
+        
+    Examples:
+        >>> # Display markdown from a URL
+        >>> md('https://raw.githubusercontent.com/user/repo/main/README.md', is_url=True)
+        
+        >>> # Display markdown from a file
+        >>> md('diagrams/README.md', is_url=False, theme='dark')
+    """
+    P.display_md(
+        source,
+        is_url=is_url,
+        style=style,
+        animate=animate,
+        **inline_styles
+    )
 
 
 def button(text: str, *,

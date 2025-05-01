@@ -7,15 +7,18 @@ import warnings
 import uuid
 import re
 import html
+import os
 from colab_print.utilities import DEFAULT_THEMES, SPECIAL_STYLES, process_animation_class
 from colab_print._exception import (ColabPrintError, TextError, ColorError,
-                                    DisplayEnvironmentError, DisplayMethodError, DisplayUpdateError, ListError, StyleNotFoundError, StyleError,
+                                    DisplayEnvironmentError, DisplayMethodError, DisplayUpdateError, ListError,
+                                    StyleNotFoundError, StyleError,
                                     StyleConflictError, StyleParsingError, TableError, DictError,
                                     IPythonNotAvailableError, ProgressError, ConversionError, ArrayConversionError,
                                     FormattingError, HTMLGenerationError, HTMLRenderingError, DataFrameError,
                                     MatrixDetectionError, NestedStructureError, MermaidError, CodeError,
                                     CodeParsingError, SyntaxHighlightingError, InvalidParameterError, AnimationError,
-                                    ButtonError, ButtonCallbackError)
+                                    ButtonError, ButtonCallbackError,
+                                    MarkdownSourceError, MarkdownParsingError, MarkdownRenderingError)
 
 __all__ = [
     # Main classes
@@ -803,7 +806,7 @@ class DFDisplayer(Displayer):
             raise
         except Exception as e:
             raise FormattingError(f"Error preparing DataFrame: {str(e)}")
-    
+
     @staticmethod
     def _validate_dataframe_params(df: pd.DataFrame, max_rows: Optional[int],
                                    max_cols: Optional[int], precision: int) -> None:
@@ -831,7 +834,7 @@ class DFDisplayer(Displayer):
 
         if not isinstance(df, pd.DataFrame):
             raise DataFrameError(f"Expected pandas DataFrame, got {type(df).__name__}")
-    
+
     @staticmethod
     def _apply_row_limits(df: pd.DataFrame, max_rows: Optional[int]) -> pd.DataFrame:
         """
@@ -848,7 +851,7 @@ class DFDisplayer(Displayer):
             half_rows = max_rows // 2
             return pd.concat([df.head(half_rows), df.tail(half_rows)])
         return df
-    
+
     @staticmethod
     def _apply_column_limits(df: pd.DataFrame, max_cols: Optional[int]) -> pd.DataFrame:
         """
@@ -867,7 +870,7 @@ class DFDisplayer(Displayer):
             last_cols = df.columns[-half_cols:].tolist()
             return df[first_cols + last_cols]
         return df
-    
+
     @staticmethod
     def _format_float_columns(df: pd.DataFrame, precision: int) -> pd.DataFrame:
         """
@@ -1389,34 +1392,34 @@ class ListDisplayer(Displayer):
             # Handle basic Python types first
             if self._is_basic_sequence(obj):
                 return list(obj)
-                
+
             # Get the object type as string for module detection
             obj_type = str(type(obj))
-            
+
             # Try to convert using specialized handlers for known array types
             result = self._try_specialized_conversion(obj, obj_type)
             if result is not None:
                 return result
-            
+
             # Handle generic array-like objects
             if self._is_array_like(obj):
                 return self._convert_generic_array(obj)
-            
+
             # Single item, not an array-like - wrap in a list
             return [obj]
-            
+
         except Exception as e:
             obj_type = type(obj).__name__
             raise ArrayConversionError(
                 array_type=obj_type,
                 message=f"Failed to convert object of type {obj_type}: {str(e)}"
             )
-    
+
     @staticmethod
     def _is_basic_sequence(obj: Any) -> bool:
         """Check if object is a basic Python sequence type that can be directly converted."""
         return isinstance(obj, (list, tuple))
-    
+
     def _try_specialized_conversion(self, obj: Any, obj_type: str) -> Optional[List]:
         """
         Try to convert object using specialized handlers for known array libraries.
@@ -1429,16 +1432,16 @@ class ListDisplayer(Displayer):
             List representation if conversion succeeded, None otherwise
         """
         array_handlers = self._get_array_handlers()
-        
+
         for module_name, handler in array_handlers.items():
             if module_name in obj_type:
                 try:
                     return handler(obj)
                 except (AttributeError, TypeError):
                     return list(obj)
-        
+
         return None
-    
+
     @staticmethod
     def _get_array_handlers() -> Dict[str, Callable]:
         """Get handlers for converting specific array library types."""
@@ -1450,7 +1453,7 @@ class ListDisplayer(Displayer):
             'tf.': lambda x: x.numpy().tolist() if hasattr(x, 'numpy') else list(x),
             'jax': lambda x: x.tolist() if hasattr(x, 'tolist') else list(x)
         }
-    
+
     @staticmethod
     def _convert_generic_array(obj: Any) -> List:
         """
@@ -2053,6 +2056,364 @@ class MermaidDisplayer(Displayer):
             raise HTMLRenderingError(f"Failed to render Mermaid diagram: {str(e)}")
 
 
+class MDDisplayer(Displayer):
+    """Displays markdown content from URL or file path with read more/less functionality."""
+
+    def display(self, source: str, *,
+                is_url: bool = False,
+                style: str = 'default',
+                animate: Optional[str] = None,
+                **inline_styles) -> None:
+        """
+        Display markdown content from a URL or file with syntax highlighting and read more/less functionality.
+        
+        Args:
+            source: The URL or file path of the markdown file to display
+            is_url: If True, treat source as a URL; if False, treat as a file path
+            style: Named style from the available styles
+            animate: Animation effect from Animate.css (e.g., 'fadeIn', 'bounceOut')
+            **inline_styles: Additional CSS styles to apply to the container
+            
+        Raises:
+            StyleNotFoundError: If specified style is not found
+            InvalidParameterError: If source is invalid
+            MarkdownSourceError: If the markdown source (file or URL) cannot be accessed
+            MarkdownParsingError: If the markdown content cannot be parsed
+            MarkdownRenderingError: If the markdown content cannot be rendered
+            AnimationError: If the specified animation is invalid
+            IPythonNotAvailableError: If display environment is not available
+        """
+        try:
+            if not isinstance(source, str) or not source:
+                received_type = type(source).__name__
+                raise InvalidParameterError("source", "non-empty string", received=received_type)
+
+            if style not in self.styles:
+                raise StyleNotFoundError(style_name=style)
+
+            base_style = self.styles.get(style)
+            inline_style_string = self._process_inline_styles(inline_styles)
+            container_style = f"{base_style} {inline_style_string}" if inline_style_string else base_style
+
+            # Process animation class if specified
+            animation_class = process_animation_class(animate)
+            class_attr = f'class="{animation_class}"' if animation_class else ''
+
+            # Generate HTML for markdown display
+            html_content = self._generate_markdown_html(source, is_url, container_style, class_attr)
+
+            # Include Animate.css CDN if animation is specified
+            animate_css_link = self._load_animate_css() if animate else ''
+            html_content = f"{animate_css_link}{html_content}" if animate else html_content
+
+            # Display the markdown content
+            self._display_html(html_content)
+        except (StyleNotFoundError, InvalidParameterError, AnimationError,
+                MarkdownSourceError, MarkdownParsingError, MarkdownRenderingError):
+            # Pass through specific exceptions
+            raise
+        except Exception as e:
+            # Wrap other exceptions with DisplayMethodError
+            raise DisplayMethodError(
+                method_name="display_md",
+                message=f"Error displaying markdown content: {str(e)}"
+            )
+
+    def _generate_markdown_html(self, source: str, is_url: bool, container_style: str, class_attr: str) -> str:
+        """
+        Generate HTML for displaying markdown content with read more/less functionality.
+        
+        Args:
+            source: URL or file path to markdown content
+            is_url: Whether source is a URL or file path
+            container_style: CSS style for the container
+            class_attr: Optional class attribute for animations
+            
+        Returns:
+            HTML content string
+            
+        Raises:
+            MarkdownSourceError: If the markdown source cannot be accessed
+            MarkdownParsingError: If the markdown content cannot be parsed
+        """
+        markdown_id = self._generate_markdown_id()
+        container_id = f"container_{markdown_id}"
+        toggle_id = f"toggle_{markdown_id}"
+        content_id = f"content_{markdown_id}"
+
+        # JavaScript logic for fetching content based on whether source is URL or file content
+        if is_url:
+            # For URL, fetch the content
+            js_logic = self._generate_js_logic_for_url(source)
+        else:
+            # For file, try to read the content
+            try:
+                if not os.path.exists(source):
+                    raise MarkdownSourceError(source=source, is_url=False,
+                                              message=f"File not found at {source}")
+
+                # Read file content
+                try:
+                    with open(source, 'r', encoding='utf-8') as file:
+                        markdown_content = file.read()
+                except Exception as e:
+                    raise MarkdownSourceError(source=source, is_url=False,
+                                              message=f"Error reading file: {str(e)}")
+
+                # Escape quotes and newlines for JavaScript string
+                try:
+                    markdown_content = markdown_content.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
+                except Exception as e:
+                    raise MarkdownParsingError(f"Error processing markdown content: {str(e)}")
+
+                js_logic = self._generate_js_logic_for_file(markdown_content)
+            except (MarkdownSourceError, MarkdownParsingError):
+                raise
+            except Exception as e:
+                raise MarkdownParsingError(f"Error processing markdown file: {str(e)}")
+
+        html = self._generate_html(container_id, container_style, class_attr, content_id, toggle_id, js_logic)
+        return html
+
+    @staticmethod
+    def _generate_markdown_id() -> str:
+        """
+        Generate a unique ID for the markdown container.
+        
+        Returns:
+            Unique ID for the markdown container
+        """
+        return f"markdown_{str(uuid.uuid4()).replace('-', '')}"
+
+    @staticmethod
+    def _generate_js_logic_for_url(source: str) -> str:
+        """
+        Generate JavaScript logic for fetching markdown content from a URL.
+        
+        Args:
+            source: URL of the markdown content
+            
+        Returns:
+            JavaScript logic string
+        """
+        logic = f"""
+            fetch("{source}")
+              .then(response => {{
+                if (!response.ok) {{
+                  throw new Error('Network response was not ok: ' + response.status);
+                }}
+                return response.text();
+              }})
+              .then(text => {{
+                contentDiv.innerHTML = marked.parse(text);
+                const preElements = contentDiv.querySelectorAll('pre');
+                preElements.forEach(pre => {{
+                  pre.classList.add('line-numbers');
+                  const code = pre.querySelector('code');
+                  if (code) {{
+                    if (!Array.from(code.classList).some(cls => cls.startsWith('language-'))) {{
+                      code.classList.add('language-markdown');
+                    }}
+                  }}
+                }});
+                Prism.highlightAll();
+                toggleBtn.style.display = 'inline-block';
+              }})
+              .catch(error => {{
+                contentDiv.innerHTML = '<div class="error-message" style="color: #e53e3e; padding: 10px; background-color: #fff5f5; border-left: 4px solid #e53e3e; margin: 10px 0;">Error loading content: ' + error.message + '</div>';
+              }});
+            """
+        return logic
+
+    @staticmethod
+    def _generate_js_logic_for_file(markdown_content: str) -> str:
+        """
+        Generate JavaScript logic for displaying markdown content with read more/less functionality.
+        
+        Args:
+            markdown_content: Content of the markdown file
+            
+        Returns:
+            JavaScript logic string
+        """
+        logic = f"""
+                // Content is passed directly as a variable for file-based input
+                const markdownText = "{markdown_content}";
+                try {{
+                    contentDiv.innerHTML = marked.parse(markdownText);
+                    const preElements = contentDiv.querySelectorAll('pre');
+                    preElements.forEach(pre => {{
+                      pre.classList.add('line-numbers');
+                      const code = pre.querySelector('code');
+                      if (code) {{
+                        if (!Array.from(code.classList).some(cls => cls.startsWith('language-'))) {{
+                          code.classList.add('language-markdown');
+                        }}
+                      }}
+                    }});
+                    Prism.highlightAll();
+                    toggleBtn.style.display = 'inline-block';
+                }} catch (error) {{
+                    contentDiv.innerHTML = '<div class="error-message" style="color: #e53e3e; padding: 10px; background-color: #fff5f5; border-left: 4px solid #e53e3e; margin: 10px 0;">Error parsing markdown: ' + error.message + '</div>';
+                }}
+                """
+        return logic
+
+    @staticmethod
+    def _generate_html(container_id: str, container_style: str, class_attr: str, content_id: str, toggle_id: str,
+                       js_logic: str) -> str:
+        """
+        Generate HTML for displaying markdown content with read more/less functionality.
+        
+        Args:
+            container_id: ID for the container element
+            container_style: CSS style for the container
+            class_attr: Optional class attribute for animations
+            content_id: ID for the content element
+            toggle_id: ID for the toggle button
+            js_logic: JavaScript logic for the toggle button
+            
+        Returns:
+            HTML content string
+        """
+        html = f"""
+        <div id="{container_id}" {class_attr} style="{container_style}">
+          <div style="max-width: 800px; margin-left: 0;">
+            <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.25.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+            <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.25.0/plugins/line-numbers/prism-line-numbers.min.css" rel="stylesheet" />
+            <style>
+              .markdown-body {{
+                overflow: hidden;
+                display: -webkit-box;
+                -webkit-line-clamp: 4;
+                -webkit-box-orient: vertical;
+                text-overflow: ellipsis;
+                transition: all 0.3s ease;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+              }}
+              .markdown-body.expanded {{
+                -webkit-line-clamp: unset;
+                overflow: visible;
+              }}
+              .read-more-btn {{
+                color: #0366d6;
+                cursor: pointer;
+                margin-top: 10px;
+                display: inline-block;
+                font-weight: 500;
+              }}
+              .error-message {{
+                border-radius: 4px;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+              }}
+              table {{
+                border-collapse: collapse;
+                width: 100%;
+                margin: 1em 0;
+                overflow-x: auto;
+                display: block;
+                color: #333333;
+              }}
+              table th, table td {{
+                border: 1px solid rgba(100, 116, 139, 0.2);
+                padding: 12px 16px;
+                text-align: left;
+                transition: background-color 0.3s, color 0.3s;
+              }}
+              table th {{
+                background-color: var(--th-bg, #f1f5f9);
+                color: var(--th-text, #0f172a);
+                font-weight: 600;
+                font-size: 14px;
+              }}
+              table tr:nth-child(even) {{
+                background-color: var(--even-bg, #f8f9fa);
+              }}
+              @media (prefers-color-scheme: dark) {{
+                table th {{
+                  background-color: var(--th-bg-dark, #1e293b);
+                  color: var(--th-text-dark, #f8fafc);
+                }}
+                table td {{
+                  color: #e2e8f0;
+                  background-color: #0f172a;
+                  border-color: rgba(255, 255, 255, 0.1);
+                }}
+                table tr:nth-child(even) {{
+                  background-color: #1e293b;
+                }}
+              }}
+              pre {{
+                margin: 1em 0;
+                border-radius: 6px;
+                overflow: hidden;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+              }}
+              :not(pre) > code {{
+                font-family: SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace;
+                background-color: rgba(175, 184, 193, 0.2);
+                padding: 0.2em 0.4em;
+                border-radius: 3px;
+                font-size: 85%;
+                color: #24292f;
+              }}
+              .line-numbers .line-numbers-rows {{
+                border-right: 1px solid #ddd;
+              }}
+            </style>
+            <div id="{content_id}" class="markdown-body">Loading...</div>
+            <span id="{toggle_id}" class="read-more-btn" style="display: none;">Read more</span>
+            <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.25.0/components/prism-core.min.js"></script>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.25.0/plugins/autoloader/prism-autoloader.min.js"></script>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.25.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
+            <script>
+              const contentDiv = document.getElementById('{content_id}');
+              const toggleBtn = document.getElementById('{toggle_id}');
+              let expanded = false;
+              
+              marked.setOptions({{
+                highlight: function(code, lang) {{
+                  return code;
+                }},
+                langPrefix: 'language-'
+              }});
+              
+              {js_logic}
+              
+              toggleBtn.addEventListener('click', () => {{
+                expanded = !expanded;
+                contentDiv.classList.toggle('expanded');
+                toggleBtn.textContent = expanded ? 'Read less' : 'Read more';
+              }});
+            </script>
+          </div>
+        </div>
+        """
+        return html
+
+    @staticmethod
+    def _display_html(html_content: str) -> None:
+        """
+        Display HTML content safely.
+        
+        Args:
+            html_content: HTML content to display
+            
+        Raises:
+            IPythonNotAvailableError: If IPython environment is not detected
+            MarkdownRenderingError: If HTML content cannot be rendered
+        """
+        try:
+            ip_display(HTML(html_content))
+        except NameError:
+            raise IPythonNotAvailableError(
+                "IPython environment not detected. Markdown content will not be rendered properly."
+            )
+        except Exception as e:
+            raise MarkdownRenderingError(f"Failed to render markdown content: {str(e)}")
+
+
 class ProgressDisplayer(Displayer):
     """Displays customizable progress bars using JavaScript or SVG."""
 
@@ -2449,7 +2810,7 @@ class ButtonDisplayer(Displayer):
     """
     Displays interactive buttons with customizable callbacks and event handling.
     """
-    
+
     def __init__(self, styles: Dict[str, str]):
         """
         Initialize a button displayer with styles.
@@ -2460,9 +2821,10 @@ class ButtonDisplayer(Displayer):
         super().__init__(styles)
         # Store registered callbacks to keep references
         self._callback_registry = {}
-    
+
+    # noinspection PyUnresolvedReferences
     def display(self, text: str, *,
-                style: str = 'default', 
+                style: str = 'default',
                 on_click: Optional[Callable] = None,
                 status_display: bool = True,
                 hover_effect: bool = True,
@@ -2501,20 +2863,20 @@ class ButtonDisplayer(Displayer):
             button_id = f"colab_print_button_{uuid.uuid4().hex[:8]}"
             container_id = f"button_container_{uuid.uuid4().hex[:8]}"
             status_id = f"status_display_{uuid.uuid4().hex[:8]}"
-            
+
             # Get base style
             if style not in self.styles:
                 raise StyleNotFoundError(style_name=style)
             base_style = self.styles.get(style)
-            
+
             # Process styles
             inline_style_string = self._process_inline_styles(inline_styles)
             final_style = f"{base_style} {inline_style_string}" if inline_style_string else base_style
-            
+
             # Process animation class if specified
             animation_class = process_animation_class(animate)
             class_attr = f'class="{animation_class}"' if animation_class else ''
-            
+
             # Register callback if provided
             callback_id = None
             if on_click:
@@ -2531,7 +2893,7 @@ class ButtonDisplayer(Displayer):
                         message="Google Colab environment required for callbacks. "
                                 f"Failed to register callback: {str(e)}"
                     )
-            
+
             # Create button HTML
             html_content = self._generate_button_html(
                 button_id=button_id,
@@ -2546,7 +2908,7 @@ class ButtonDisplayer(Displayer):
                 class_attr=class_attr,
                 position=position
             )
-            
+
             # Create JavaScript for button behavior
             js_content = self._generate_button_js(
                 button_id=button_id,
@@ -2557,23 +2919,25 @@ class ButtonDisplayer(Displayer):
                 status_display=status_display,
                 enabled=enabled
             )
-            
+
             # Display HTML and JavaScript
             self._display_html_and_js(html_content, js_content)
-            
+
             return button_id
-        
+
         except (StyleNotFoundError, ButtonCallbackError) as e:
             # Pass through known exceptions
             raise
         except Exception as e:
             # Wrap unknown exceptions
             raise ButtonError(f"Error creating button: {str(e)}")
-    
-    def _generate_button_html(self, button_id: str, container_id: str, status_id: str,
-                             text: str, style: str, status_display: bool,
-                             width: str, height: str, enabled: bool, class_attr: str,
-                             position: Literal['left', 'mid', 'right'] = 'left') -> str:
+
+    # noinspection RegExpAnonymousGroup
+    @staticmethod
+    def _generate_button_html(button_id: str, container_id: str, status_id: str,
+                              text: str, style: str, status_display: bool,
+                              width: str, height: str, enabled: bool, class_attr: str,
+                              position: Literal['left', 'mid', 'right'] = 'left') -> str:
         """
         Generate HTML for button and container.
         
@@ -2598,21 +2962,21 @@ class ButtonDisplayer(Displayer):
         color_match = re.search(r'background-color:\s*([^;]+)', style)
         if color_match:
             base_color = color_match.group(1).strip()
-        
+
         # Button opacity based on enabled state
         opacity = "1.0" if enabled else "0.6"
         cursor = "pointer" if enabled else "not-allowed"
-        
+
         # Base button style
         button_style = f"{style}; width: {width}; height: {height}; opacity: {opacity}; cursor: {cursor};"
-        
+
         # Map position to text-align value
         text_align = {
             'left': 'left',
             'mid': 'center',
             'right': 'right'
         }[position]
-        
+
         # Prepare HTML parts
         html_parts = [
             f'<div id="{container_id}" style="margin: 20px 0; text-align: {text_align};">',
@@ -2620,7 +2984,7 @@ class ButtonDisplayer(Displayer):
             f'    {html.escape(text)}',
             f'  </button>'
         ]
-        
+
         # Add status display if requested
         if status_display:
             html_parts.extend([
@@ -2638,12 +3002,12 @@ class ButtonDisplayer(Displayer):
                 f'    <p>Event log will appear here...</p>',
                 f'  </div>'
             ])
-        
+
         # Close container
         html_parts.append('</div>')
-        
+
         return '\n'.join(html_parts)
-    
+
     def _generate_button_js(self, button_id: str, status_id: str,
                             on_click: bool, callback_id: Optional[str],
                             hover_effect: bool, status_display: bool,
@@ -2652,101 +3016,40 @@ class ButtonDisplayer(Displayer):
         Generate JavaScript for button behavior.
         """
         js_parts = [
-            """// Get references to elements
-    const button = document.getElementById("{button_id}");""".format(button_id=button_id)
+            self._get_js_button_creation(button_id),
         ]
 
         if status_display:
-            js_parts.append("""const status = document.getElementById("{status_id}");
-
-    // Function to log events to status display
-    function logEvent(eventName, details = "") {{
-        const logEntry = document.createElement("p");
-        logEntry.style.margin = "5px 0";
-        logEntry.innerHTML = `<strong>${{eventName}}</strong>: ${{new Date().toLocaleTimeString()}} ${{details}}`;
-
-        // Prepend to show newest events at the top
-        status.insertBefore(logEntry, status.firstChild);
-
-        // Limit number of entries
-        if (status.children.length > 10) {{
-            status.removeChild(status.lastChild);
-        }}
-    }}
-
-    // Clear initial message
-    status.innerHTML = "";""".format(status_id=status_id))
+            js_parts.append(self._get_js_status(status_id))
 
         if enabled:
             if hover_effect:
-                js_parts.append("""// OnHoverEntering (mouseenter event)
-    button.addEventListener("mouseenter", function(e) {{
-        {log_hover_enter}
-        button.style.transform = "scale(1.05)";
-        button.style.boxShadow = "0 6px 8px rgba(0,0,0,0.15)";
-    }});
+                js_parts.append(self._get_js_hover_effect(status_display))
 
-    // OnHoverExit (mouseleave event)
-    button.addEventListener("mouseleave", function(e) {{
-        {log_hover_exit}
-        button.style.transform = "scale(1.0)";
-        button.style.boxShadow = "0 4px 6px rgba(0,0,0,0.1)";
-    }});""".format(
-        log_hover_enter='logEvent("OnHoverEntering");' if status_display else "",
-        log_hover_exit='logEvent("OnHoverExit");' if status_display else ""
-    ))
-
-            js_parts.append("""// OnPressDown (mousedown event)
-    button.addEventListener("mousedown", function(e) {{
-        {log_press_down}
-        button.style.boxShadow = "0 2px 3px rgba(0,0,0,0.1)";
-        button.style.transform = "translateY(2px)";
-    }});
-
-    // OnPressUp (mouseup event)
-    button.addEventListener("mouseup", function(e) {{
-        {log_press_up}
-        button.style.boxShadow = "0 4px 6px rgba(0,0,0,0.1)";
-        button.style.transform = "scale(1.0)";
-    }});""".format(
-        log_press_down='logEvent("OnPressDown", `at position (${e.offsetX}, ${e.offsetY})`);' if status_display else "",
-        log_press_up='logEvent("OnPressUp");' if status_display else ""
-    ))
+            js_parts.append(self._get_press_effect(status_display))
 
             if on_click and callback_id:
-                js_parts.append("""// OnClick with Python callback
-    button.addEventListener("click", function(e) {{
-        {log_click}
-        
-        // Call the Python function
-        google.colab.kernel.invokeFunction("{callback_id}", [], {{}})
-        .then(function(result) {{
-            {log_result}
-            if (result.data["text/plain"] && result.data["text/plain"].includes("__UPDATE_BUTTON_TEXT__:")) {{
-                const newText = result.data["text/plain"]
-                                    .split("__UPDATE_BUTTON_TEXT__:")[1]
-                                    .trim().replace(/^[\\'"](.+)[\\'"]$/, "$1");
-                button.textContent = newText;
-            }}
-        }})
-        .catch(function(error) {{
-            {log_error}
-        }});
-    }});""".format(
-        log_click='logEvent("OnClick", "Button was clicked!");' if status_display else "",
-        callback_id=callback_id,
-        log_result='logEvent("PythonCallback", `Returned: ${result.data["text/plain"]}`);' if status_display else "",
-        log_error='logEvent("Error", `Python callback error: ${error}`);' if status_display else ""
-    ))
+                js_parts.append(self._get_js_click_effect(callback_id, status_display))
             else:
-                js_parts.append("""// OnClick (basic)
-    button.addEventListener("click", function(e) {{
-        {log_click}
-    }});""".format(
-        log_click='logEvent("OnClick", "Button was clicked!");' if status_display else ""
-    ))
+                js_parts.append(self._get_js_basic_click_effect(status_display))
 
-            js_parts.append("""// OnFocus (focus event)
+            js_parts.append(self._get_js_focuse_effect(status_display))
+
+        if status_display:
+            js_parts.append('logEvent("Initialization", "Button is ready");')
+
+        return "\n".join(js_parts)
+
+    @staticmethod
+    def _get_js_button_creation(button_id: str) -> str:
+        """Generate JavaScript for button creation."""
+        button = """// Get references to elements
+    const button = document.getElementById("{button_id}");""".format(button_id=button_id)
+        return button
+
+    @staticmethod
+    def _get_js_focuse_effect(status_display: bool) -> str:
+        effect = """// OnFocus (focus event)
     button.addEventListener("focus", function(e) {{
         {log_focus}
         button.style.boxShadow = "0 0 0 3px rgba(52, 152, 219, 0.5)";
@@ -2776,19 +3079,121 @@ class ButtonDisplayer(Displayer):
             button.click();
         }}
     }});""".format(
-        log_focus='logEvent("OnFocus", "Button received focus");' if status_display else "",
-        log_blur='logEvent("OnBlur", "Button lost focus");' if status_display else "",
-        log_key_down='logEvent("OnKeyDown", `Key pressed: ${e.key}`);' if status_display else "",
-        log_key_up='logEvent("OnKeyUp", `Key released: ${e.key}`);' if status_display else ""
-    ))
+            log_focus='logEvent("OnFocus", "Button received focus");' if status_display else "",
+            log_blur='logEvent("OnBlur", "Button lost focus");' if status_display else "",
+            log_key_down='logEvent("OnKeyDown", `Key pressed: ${e.key}`);' if status_display else "",
+            log_key_up='logEvent("OnKeyUp", `Key released: ${e.key}`);' if status_display else ""
+        )
+        return effect
 
-        if status_display:
-            js_parts.append('logEvent("Initialization", "Button is ready");')
+    @staticmethod
+    def _get_js_basic_click_effect(status_display: bool) -> str:
+        """Generate JavaScript for basic click effect."""
+        base = """// OnClick (basic)
+    button.addEventListener("click", function(e) {{
+        {log_click}
+    }});""".format(
+            log_click='logEvent("OnClick", "Button was clicked!");' if status_display else ""
+        )
+        return base
 
-        return "\n".join(js_parts)
+    @staticmethod
+    def _get_js_click_effect(callback_id: Optional[str], status_display: bool) -> str:
+        """"Generate JavaScript for click effect."""
+        effect = """// OnClick with Python callback
+    button.addEventListener("click", function(e) {{
+        {log_click}
+        
+        // Call the Python function
+        google.colab.kernel.invokeFunction("{callback_id}", [], {{}})
+        .then(function(result) {{
+            {log_result}
+            if (result.data["text/plain"] && result.data["text/plain"].includes("__UPDATE_BUTTON_TEXT__:")) {{
+                const newText = result.data["text/plain"]
+                                    .split("__UPDATE_BUTTON_TEXT__:")[1]
+                                    .trim().replace(/^[\\'"](.+)[\\'"]$/, "$1");
+                button.textContent = newText;
+            }}
+        }})
+        .catch(function(error) {{
+            {log_error}
+        }});
+    }});""".format(
+            log_click='logEvent("OnClick", "Button was clicked!");' if status_display else "",
+            callback_id=callback_id,
+            log_result='logEvent("PythonCallback", `Returned: ${result.data["text/plain"]}`);' if status_display else "",
+            log_error='logEvent("Error", `Python callback error: ${error}`);' if status_display else ""
+        )
+        return effect
 
-    
-    def _display_html_and_js(self, html_content: str, js_content: str) -> None:
+    @staticmethod
+    def _get_press_effect(status_display: bool) -> str:
+        """"Generate JavaScript for press effect."""
+        effect = """// OnPressDown (mousedown event)
+    button.addEventListener("mousedown", function(e) {{
+        {log_press_down}
+        button.style.boxShadow = "0 2px 3px rgba(0,0,0,0.1)";
+        button.style.transform = "translateY(2px)";
+    }});
+
+    // OnPressUp (mouseup event)
+    button.addEventListener("mouseup", function(e) {{
+        {log_press_up}
+        button.style.boxShadow = "0 4px 6px rgba(0,0,0,0.1)";
+        button.style.transform = "scale(1.0)";
+    }});""".format(
+            log_press_down='logEvent("OnPressDown", `at position (${e.offsetX}, ${e.offsetY})`);' if status_display else "",
+            log_press_up='logEvent("OnPressUp");' if status_display else ""
+        )
+        return effect
+
+    @staticmethod
+    def _get_js_hover_effect(status_display: bool) -> str:
+        """"Generate JavaScript for hover effect."""
+        effect = """// OnHoverEntering (mouseenter event)
+    button.addEventListener("mouseenter", function(e) {{
+        {log_hover_enter}
+        button.style.transform = "scale(1.05)";
+        button.style.boxShadow = "0 6px 8px rgba(0,0,0,0.15)";
+    }});
+
+    // OnHoverExit (mouseleave event)
+    button.addEventListener("mouseleave", function(e) {{
+        {log_hover_exit}
+        button.style.transform = "scale(1.0)";
+        button.style.boxShadow = "0 4px 6px rgba(0,0,0,0.1)";
+    }});""".format(
+            log_hover_enter='logEvent("OnHoverEntering");' if status_display else "",
+            log_hover_exit='logEvent("OnHoverExit");' if status_display else ""
+        )
+        return effect
+
+    @staticmethod
+    def _get_js_status(status_id: str) -> str:
+        """"Generate JavaScript for status display."""
+        status = """const status = document.getElementById("{status_id}");
+
+    // Function to log events to status display
+    function logEvent(eventName, details = "") {{
+        const logEntry = document.createElement("p");
+        logEntry.style.margin = "5px 0";
+        logEntry.innerHTML = `<strong>${{eventName}}</strong>: ${{new Date().toLocaleTimeString()}} ${{details}}`;
+
+        // Prepend to show newest events at the top
+        status.insertBefore(logEntry, status.firstChild);
+
+        // Limit number of entries
+        if (status.children.length > 10) {{
+            status.removeChild(status.lastChild);
+        }}
+    }}
+
+    // Clear initial message
+    status.innerHTML = "";""".format(status_id=status_id)
+        return status
+
+    @staticmethod
+    def _display_html_and_js(html_content: str, js_content: str) -> None:
         """
         Display both HTML and JavaScript.
         
@@ -2803,7 +3208,7 @@ class ButtonDisplayer(Displayer):
         try:
             # Display HTML first
             ip_display(HTML(html_content))
-            
+
             # Then execute JavaScript
             ip_display(Javascript(js_content))
         except NameError:
@@ -2812,8 +3217,9 @@ class ButtonDisplayer(Displayer):
             )
         except Exception as e:
             raise HTMLRenderingError(f"Failed to render button: {str(e)}")
-    
-    def update_button_text(self, button_id: str, new_text: str) -> None:
+
+    @staticmethod
+    def update_button_text(button_id: str, new_text: str) -> None:
         """
         Update the text of a button using JavaScript.
         
@@ -2835,7 +3241,7 @@ class ButtonDisplayer(Displayer):
                 console.error("Button with ID {button_id} not found");
             }}
             """
-            
+
             # Execute JavaScript
             ip_display(Javascript(js_code))
         except NameError:
@@ -2844,8 +3250,9 @@ class ButtonDisplayer(Displayer):
             )
         except Exception as e:
             raise ButtonError(f"Failed to update button text: {str(e)}")
-    
-    def enable_button(self, button_id: str, enabled: bool = True) -> None:
+
+    @staticmethod
+    def enable_button(button_id: str, enabled: bool = True) -> None:
         """
         Enable or disable a button using JavaScript.
         
@@ -2869,7 +3276,7 @@ class ButtonDisplayer(Displayer):
                 console.error("Button with ID {button_id} not found");
             }}
             """
-            
+
             # Execute JavaScript
             ip_display(Javascript(js_code))
         except NameError:
@@ -2917,6 +3324,7 @@ class Printer:
             self.progress_displayer = ProgressDisplayer(self.styles)
             self.mermaid_displayer = MermaidDisplayer(self.styles)
             self.button_displayer = ButtonDisplayer(self.styles)
+            self.md_displayer = MDDisplayer(self.styles)
         except Exception as e:
             raise ColabPrintError(f"Error initializing Printer: {str(e)}")
 
@@ -3216,6 +3624,58 @@ class Printer:
             **inline_styles
         )
 
+    def display_md(self, source: str, *,
+                   is_url: bool = False,
+                   style: str = 'default',
+                   animate: Optional[str] = None,
+                   **inline_styles) -> None:
+        """
+        Display markdown content from a URL or file with read more/less functionality.
+        
+        Args:
+            source: The URL or file path of the markdown file to display
+            is_url: If True, treat source as a URL; if False, treat as a file path
+            style: Named style from available styles
+            animate: Animation effect from Animate.css (e.g., 'fadeIn', 'bounceOut')
+            **inline_styles: Additional CSS styles to apply to the container
+            
+        Raises:
+            DisplayMethodError: If there's an issue with the display method
+            StyleNotFoundError: If specified style is not found
+            InvalidParameterError: If source is invalid
+            DisplayEnvironmentError: If display environment is not available
+            
+        Examples:
+            # Display markdown from a file
+            printer.display_md('docs/README.md')
+            
+            # Display markdown from a URL
+            printer.display_md('https://raw.githubusercontent.com/user/repo/main/README.md', is_url=True)
+            
+            # Apply animation
+            printer.display_md('docs/README.md', animate='fadeIn')
+            
+            # Apply custom styling
+            printer.display_md('docs/README.md', max_width='800px', border='1px solid #ccc')
+        """
+        try:
+            self.md_displayer.display(
+                source,
+                is_url=is_url,
+                style=style,
+                animate=animate,
+                **inline_styles
+            )
+        except (StyleNotFoundError, InvalidParameterError, AnimationError, DisplayEnvironmentError) as e:
+            # Pass through known exceptions
+            raise
+        except Exception as e:
+            # Wrap unknown exceptions
+            raise DisplayMethodError(
+                method_name="display_md",
+                message=f"Error displaying markdown content: {str(e)}"
+            ) from e
+
     def add_style(self, name: str, style_definition: str) -> None:
         """
         Add a new style to the available styles.
@@ -3511,7 +3971,7 @@ class Printer:
             IPythonNotAvailableError: If IPython environment is not detected
         """
         self.button_displayer.update_button_text(button_id, new_text)
-    
+
     def enable_button(self, button_id: str, enabled: bool = True) -> None:
         """
         Enable or disable a button using JavaScript.
