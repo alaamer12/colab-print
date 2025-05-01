@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Introduced comprehensive animation support throughout the library using Animate.css under the hood
 - Support for animation configuration on the run through the string parameter (`animate=None` by default), which processes the string value to follow Animate.css pattern
 - Better example.py with enhanced demonstrations showcasing all features
+- New markdown display functionality with `md()` function for rendering markdown content from files or URLs
+  - Support for local files: `md("/content/SECURITY.md", is_url=False)`
+  - Support for remote URLs: `md("https://raw.githubusercontent.com/alaamer12/c4f/main/README.md", is_url=True)`
+  - Custom styling options with color parameter: `md("https://example.com/doc.md", is_url=True, color="white")`
 
 ### Improved
 - More robust exception handling across all display components
