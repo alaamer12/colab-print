@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0b0] - 2025-05-15
+
+### Added
+- New interactive button component with extensive event handling capabilities
+  - Support for Python callbacks via `on_click` parameter
+  - Comprehensive event tracking and logging via status display area
+  - Visual feedback for hover, press, and focus states
+  - Ability to update button text and enabled state programmatically
+  - Return value convention to update button text from callbacks: `__UPDATE_BUTTON_TEXT__: New Text`
+  - Keyboard navigation and accessibility features (Enter/Space key support)
+- Added convenience `button()` function for quick access to interactive functionality
+- Added support for button positioning with `position` parameter ('left', 'mid', 'right')
+- Added animation support for buttons using Animate.css
+- Added ButtonDisplayer methods to the Printer class API:
+  - `update_button_text(button_id, new_text)` to update button text after creation
+  - `enable_button(button_id, enabled)` to enable or disable buttons
+
+### Improved
+- Enhanced error handling for button interactions with specialized exceptions
+- Better documentation with comprehensive examples for button usage
+- Improved browser compatibility for interactive elements
+
+### Notes
+- This is a beta release focused on interactive button functionality
+- Button callbacks require Google Colab environment to function properly
+- Full API documentation available in docstrings and example notebooks
+
 ## [0.4.1] - 2025-05-05
 
 ### Added

@@ -74,7 +74,7 @@ from colab_print.utilities import (DEFAULT_THEMES, SPECIAL_STYLES, VALID_ANIMATI
 
 P = Printer()
 
-__version__ = "0.4.1"
+__version__ = "0.5.0b0"
 __author__ = "alaamer12"
 __email__ = "ahmedmuhmmed239@gmail.com"
 __license__ = "MIT"
