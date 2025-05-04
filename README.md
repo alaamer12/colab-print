@@ -4,8 +4,25 @@
 [![Python versions](https://img.shields.io/pypi/pyversions/colab-print.svg)](https://pypi.org/project/colab-print/)
 [![License](https://img.shields.io/github/license/alaamer12/colab-print.svg)](https://github.com/alaamer12/colab-print/blob/main/LICENSE)
 
-**Colab Print** is a Python library that enhances the display capabilities of Jupyter and Google Colab notebooks, providing beautiful, customizable HTML outputs for text, lists, dictionaries, tables, pandas DataFrames, and progress bars.
+**Colab Print** is a Python library that enhances the display capabilities of Jupyter and Google Colab notebooks, providing beautiful, customizable HTML outputs for text, lists, dictionaries, tables, pandas DataFrames, progress bars, and interactive elements.
 
+## Table of Contents
+- [Features](#features)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Display Functions](#display-functions)
+  - [Text Styling](#text-styling)
+  - [Content Display](#content-display)
+  - [Status Feedback](#status-feedback)
+  - [Data Visualization](#data-visualization)
+  - [Interactive Elements](#interactive-elements)
+- [Styling Options](#styling-options)
+- [Advanced Usage](#advanced-usage)
+- [Exception Handling](#exception-handling)
+- [Contributing](#contributing)
+- [License](#license)
+
+<a id="features"></a>
 ## Features
 
 - 🎨 **Rich Text Styling** - Display text with predefined styles or custom CSS
@@ -19,26 +36,32 @@
 - 📊 **Progress Tracking** - Display elegant progress bars with tqdm compatibility
 - 🔄 **Graceful Fallbacks** - Works even outside Jupyter/IPython environments
 - 🧩 **Structured Data Detection** - Automatic handling of nested structures, matrices, and array-like objects
+- 🖱️ **Interactive Buttons** - Create clickable buttons with Python callback functions
+- ✨ **Animation Effects** - Apply beautiful animations to any displayed element
+- 📊 **Mermaid Diagrams** - Render Mermaid.js diagrams with customizable styling
+- 📝 **Markdown Rendering** - Display Markdown content from strings, files, or URLs
 
+<a id="installation"></a>
 ## Installation
 
 ```bash
 pip install colab-print
 ```
 
+<a id="quick-start"></a>
 ## Quick Start
 
 ```python
-from colab_print import Printer, header, success, progress
+from colab_print import Printer, header, success, progress, button
 import pandas as pd
 import time
-
-# Create a printer with default styles
-printer = Printer()
 
 # Use pre-configured styling functions
 header("Colab Print Demo")
 success("Library loaded successfully!")
+
+# Create a printer with default styles
+printer = Printer()
 
 # Display styled text
 printer.display("Hello, World!", style="highlight")
@@ -46,6 +69,13 @@ printer.display("Hello, World!", style="highlight")
 # Display a list with nested elements (automatically detected and styled)
 my_list = ['apple', 'banana', ['nested', 'item'], 'cherry', {'key': 'value'}]
 printer.display_list(my_list, ordered=True, style="info")
+
+# Interactive button with callback
+def on_click_handler():
+    print("Button clicked!")
+    return "__UPDATE_BUTTON_TEXT__: Clicked!"
+    
+button("Click Me", on_click=on_click_handler, animate="pulse")
 
 # Show a progress bar
 for i in progress(range(10), desc="Processing"):
@@ -80,73 +110,289 @@ printer.display_df(df,
                   caption="Sample DataFrame")
 ```
 
-## Styling & Shortcut Functions
+<a id="display-functions"></a>
+## Display Functions
 
-### Predefined Style Shortcuts
+Colab Print provides a variety of specialized display functions for different content types and purposes.
 
-Colab Print provides convenient shortcut functions with pre-configured styling:
+<a id="text-styling"></a>
+## Text Styling
+
+Text styling functions help you format and display text with various emphasis styles, borders, and visual treatments to create structured, visually appealing documents.
+
+### Text Styling Functions
+
+| Function                                                                                     | Description                            | Example                          |
+|----------------------------------------------------------------------------------------------|----------------------------------------|----------------------------------|
+| <a id="header-func"></a>`header(text, *, animate=None, **override_styles)`                   | Display text as a prominent header     | `header("Main Section")`         |
+| <a id="title-func"></a>`title(text, *, animate=None, **override_styles)`                     | Display text as a large centered title | `title("Document Title")`        |
+| <a id="subtitle-func"></a>`subtitle(text, *, animate=None, **override_styles)`               | Display text as a subtitle             | `subtitle("Supporting info")`    |
+| <a id="section-divider-func"></a>`section_divider(text, *, animate=None, **override_styles)` | Display text as a section divider      | `section_divider("New Section")` |
+| <a id="subheader-func"></a>`subheader(text, *, animate=None, **override_styles)`             | Display text as a subheading           | `subheader("Subsection")`        |
 
 ```python
-from colab_print import (
-    header, title, subtitle, section_divider, subheader,
-    code, card, quote, badge, data_highlight, footer,
-    highlight, info, success, warning, error, muted, primary, secondary,
-    dfd, table, list_, dict_, progress
+from colab_print import header, title, subtitle
+
+# Simple examples
+header("Main Section")
+title("Document Title", animate="fadeIn")
+subtitle("Supporting information", color="#9C27B0")
+```
+
+<a id="content-display"></a>
+## Content Display
+
+Content display functions provide specialized formatting for different types of content, such as code blocks, cards, quotes, and other structured elements.
+
+### Content Display Functions
+
+| Function                                                                         | Description                      | Example                  |
+|----------------------------------------------------------------------------------|----------------------------------|--------------------------|
+| <a id="code-func"></a>`code(text, *, animate=None, **override_styles)`           | Display text as a code block     | `code("print('Hello')")` |
+| <a id="card-func"></a>`card(text, *, animate=None, **override_styles)`           | Display text in a card container | `card("Card content")`   |
+| <a id="quote-func"></a>`quote(text, *, animate=None, **override_styles)`         | Display text as a block quote    | `quote("Quoted text")`   |
+| <a id="badge-func"></a>`badge(text, *, animate=None, **override_styles)`         | Display text as a small badge    | `badge("New")`           |
+| <a id="highlight-func"></a>`highlight(text, *, animate=None, **override_styles)` | Display text with emphasis       | `highlight("Important")` |
+| <a id="footer-func"></a>`footer(text, *, animate=None, **override_styles)`       | Display text as a footer         | `footer("Page footer")`  |
+
+```python
+from colab_print import code, card, quote, badge
+
+# Content examples
+code("def hello():\n    print('Hello world!')")
+card("This is a card with content", box_shadow="0 4px 8px rgba(0,0,0,0.2)")
+quote("The best way to predict the future is to invent it.")
+badge("New Feature", background_color="#9C27B0", color="white")
+```
+
+<a id="status-feedback"></a>
+## Status Feedback
+
+Status feedback functions provide visual cues about operation status, from informational messages to warnings and errors, each with appropriate styling.
+
+### Status Feedback Functions
+
+| Function                                                                     | Description                   | Example                 |
+|------------------------------------------------------------------------------|-------------------------------|-------------------------|
+| <a id="info-func"></a>`info(text, *, animate=None, **override_styles)`       | Display informational message | `info("Processing...")` |
+| <a id="success-func"></a>`success(text, *, animate=None, **override_styles)` | Display success message       | `success("Completed!")` |
+| <a id="warning-func"></a>`warning(text, *, animate=None, **override_styles)` | Display warning message       | `warning("Caution")`    |
+| <a id="error-func"></a>`error(text, *, animate=None, **override_styles)`     | Display error message         | `error("Failed")`       |
+| <a id="muted-func"></a>`muted(text, *, animate=None, **override_styles)`     | Display de-emphasized text    | `muted("Side note")`    |
+
+```python
+from colab_print import info, success, warning, error
+
+# Status examples
+info("Loading data...", animate="fadeIn")
+success("Operation completed successfully!")
+warning("Proceed with caution", background_color="#FFF9C4")
+error("An error occurred", font_weight="bold")
+```
+
+<a id="data-visualization"></a>
+## Data Visualization
+
+Data visualization functions help you display structured data like tables, DataFrames, lists, dictionaries, and diagrams with enhanced styling and interactivity.
+
+### Data Visualization Functions
+
+| Function                                                                   | Description                | Example                            |
+|----------------------------------------------------------------------------|----------------------------|------------------------------------|
+| <a id="dfd-func"></a>`dfd(df, **display_options)`                          | Display a pandas DataFrame | `dfd(df, highlight_cols=["Name"])` |
+| <a id="table-func"></a>`table(headers, rows, **table_options)`             | Display tabular data       | `table(headers, rows)`             |
+| <a id="list-func"></a>`list_(items, **list_options)`                       | Display a list/array       | `list_([1, 2, 3])`                 |
+| <a id="dict-func"></a>`dict_(data, **dict_options)`                        | Display a dictionary       | `dict_({"a": 1, "b": 2})`          |
+| <a id="mermaid-func"></a>`mermaid(diagram, *, theme='default', **options)` | Display a Mermaid diagram  | `mermaid("graph TD; A-->B;")`      |
+| <a id="md-func"></a>`md(source, *, is_url=False, **options)`               | Display Markdown content   | `md("# Title\nContent")`           |
+
+```python
+from colab_print import dfd, table, list_, dict_, mermaid
+import pandas as pd
+
+# DataFrame example
+df = pd.DataFrame({
+    'Name': ['Alice', 'Bob'],
+    'Score': [95, 82]
+})
+dfd(df, highlight_cols=['Score'], caption="Test Scores")
+
+# Table example
+table(
+    headers=["Name", "Score"],
+    rows=[["Alice", 95], ["Bob", 82]],
+    highlight_rows=[0]
 )
 
-# Display styled text with a single function call
-header("Main Section")
-title("Document Title")
-subtitle("Supporting information")
-success("Operation completed!")
-warning("Proceed with caution")
-error("An error occurred")
-code("print('Hello World')")
+# List example
+list_([1, 2, [3, 4]], matrix_mode=True)
 
-# Display different content types with shortcuts
-table(headers, rows)
-list_(my_list, ordered=True)
-dict_(my_dict)
-dfd(df, highlight_cols=["Name"])
+# Dictionary example
+dict_({'user': 'Alice', 'data': {'score': 95, 'rank': 1}})
+
+# Mermaid diagram
+mermaid('''
+graph TD;
+    A-->B;
+    A-->C;
+    B-->D;
+    C-->D;
+''', theme='forest')
 ```
+
+<a id="interactive-elements"></a>
+### Interactive Elements
+
+| Function                                                            | Description                | Example                                |
+|---------------------------------------------------------------------|----------------------------|----------------------------------------|
+| <a id="button-func"></a>`button(text, *, on_click=None, **options)` | Display interactive button | `button("Click Me", on_click=handler)` |
+| <a id="progress-func"></a>`progress(iterable, **options)`           | Display progress bar       | `progress(range(10), desc="Loading")`  |
+
+```python
+from colab_print import button, progress, P
+import time
+
+# Button with callback
+def on_click():
+    print("Button clicked!")
+    return "__UPDATE_BUTTON_TEXT__: Clicked!"
+
+btn_id = button("Click Me", 
+                on_click=on_click, 
+                animate="pulse",
+                position="mid",
+                width="200px")
+
+# Update button programmatically
+P.update_button_text(btn_id, "New Text")
+P.enable_button(btn_id, False)  # Disable button
+
+# Progress bar
+for i in progress(range(10), desc="Processing", color="#9C27B0"):
+    time.sleep(0.2)  # Simulate work
+```
+
+<a id="styling-options"></a>
+## Styling Options
 
 ### Predefined Styles
 
-- `default` - Clean, professional styling
-- `highlight` - Stand-out text with emphasis
-- `info` - Informational blue text
-- `success` - Positive green message
-- `warning` - Attention-grabbing yellow alert
-- `error` - Critical red message
-- `muted` - Subtle gray text
-- `primary` - Primary blue-themed text
-- `secondary` - Secondary purple-themed text
-- `code` - Code-like display with monospace font
-- `card` - Card-like container with shadow
-- `quote` - Styled blockquote
-- `notice` - Attention-drawing notice
-- `badge` - Compact badge-style display
+Colab Print includes a variety of built-in styles for different display needs:
+
+| Style                | Description                           |
+|----------------------|---------------------------------------|
+| `default`            | Clean, professional styling           |
+| `header`             | Large text with top/bottom borders    |
+| `title`              | Large centered title                  |
+| `subtitle`           | Medium-sized italic title             |
+| `highlight`          | Stand-out text with emphasis          |
+| `info`               | Informational blue text               |
+| `success`            | Positive green message                |
+| `warning`            | Attention-grabbing yellow alert       |
+| `error`              | Critical red message                  |
+| `muted`              | Subtle gray text                      |
+| `primary`            | Primary blue-themed text              |
+| `secondary`          | Secondary purple-themed text          |
+| `code_block`         | Code-like display with monospace font |
+| `card`               | Card-like container with shadow       |
+| `quote`              | Styled blockquote                     |
+| `notice`             | Attention-drawing notice              |
+| `badge`              | Compact badge-style display           |
+| `interactive_button` | Clickable button style                |
 
 ### Custom Styling
 
-You can add your own styles:
+You can add your own styles or override existing ones:
 
 ```python
+from colab_print import Printer
+
 printer = Printer()
+
+# Add a new style
 printer.add_style("custom", "color: purple; font-size: 20px; font-weight: bold;")
 printer.display("Custom styled text", style="custom")
+
+# Override styles inline
+printer.display("Inline styled text", style="default", 
+                color="teal", font_size="18px", text_decoration="underline")
+
+# Create a reusable styled display function
+my_header = printer.create_styled_display("header", color="#FF5722", font_size="24px")
+my_header("First Section")
+my_header("Second Section")
 ```
 
-## Display Methods
+<a id="advanced-usage"></a>
+## Advanced Usage
 
-- `printer.display(text, style="default", **inline_styles)`: Displays styled text.
-- `printer.display_list(items, ordered=False, style="default", item_style=None, **inline_styles)`: Displays lists/tuples.
-- `printer.display_dict(data, style="default", key_style=None, value_style=None, **inline_styles)`: Displays dictionaries.
-- `printer.display_table(headers, rows, style="default", **table_options)`: Displays basic tables.
-- `printer.display_df(df, style="default", **df_options)`: Displays pandas DataFrames with many options.
-- `printer.display_progress(total, desc="", style="default", **progress_options)`: Displays a progress bar.
+### DataFrame Display Options
 
-## Progress Tracking
+The `display_df` method and `dfd()` function support numerous customization options:
+
+```python
+from colab_print import dfd
+import pandas as pd
+
+df = pd.DataFrame({
+    'Name': ['Alice', 'Bob', 'Charlie'],
+    'Age': [28, 34, 22],
+    'City': ['New York', 'London', 'Paris']
+})
+
+dfd(df,
+    style='default',           # Base style
+    max_rows=20,               # Max rows to display
+    max_cols=10,               # Max columns to display
+    precision=2,               # Decimal precision for floats
+    header_style="...",        # Custom header styling
+    odd_row_style="...",       # Custom odd row styling
+    even_row_style="...",      # Custom even row styling
+    index=True,                # Show index
+    width="100%",              # Table width
+    caption="My DataFrame",    # Table caption
+    highlight_cols=["col1"],   # Highlight columns
+    highlight_rows=[0, 2],     # Highlight rows
+    highlight_cells={(0,0): "..."}, # Highlight specific cells
+    font_size="14px",          # Custom font size for all cells
+    text_align="center")       # Text alignment for all cells
+```
+
+### Interactive Buttons
+
+Create interactive buttons with Python callbacks (introduced in v0.5.0):
+
+```python
+from colab_print import button, P
+
+# Define a callback function
+def on_button_click():
+    print("Button was clicked!")
+    # Return a special string to update button text
+    return "__UPDATE_BUTTON_TEXT__: Clicked!"
+
+# Create a basic button
+btn_id = button("Click Me", on_click=on_button_click)
+
+# Update button programmatically
+P.update_button_text(btn_id, "New Button Text")
+
+# Disable the button
+P.enable_button(btn_id, False)
+
+# Create a styled button with animation
+button("Fancy Button",
+       on_click=on_button_click,
+       animate="pulse",
+       position="mid",  # 'left', 'mid', or 'right'
+       width="200px",
+       background_color="linear-gradient(135deg, #3498db, #9b59b6)",
+       color="white",
+       border_radius="30px",
+       box_shadow="0 4px 8px rgba(0,0,0,0.2)")
+```
+
+### Progress Tracking
 
 Colab Print offers powerful progress tracking with tqdm compatibility:
 
@@ -176,140 +422,116 @@ for i in progress(range(100),
 # Undetermined progress (loading indicator)
 progress_id = printer.display_progress(total=None, desc="Loading...", animated=True)
 time.sleep(3)  # Do some work with unknown completion time
+printer.update_progress(progress_id, 100, 100)  # Mark as complete
 ```
 
-## DataFrame Display Options
+### Animation Support
 
-The `display_df` method supports numerous customization options:
+Apply animations to any displayed element using Animate.css:
 
 ```python
-printer.display_df(df,
-                  style='default',           # Base style
-                  max_rows=20,               # Max rows to display
-                  max_cols=10,               # Max columns to display
-                  precision=2,               # Decimal precision for floats
-                  header_style="...",        # Custom header styling
-                  odd_row_style="...",       # Custom odd row styling
-                  even_row_style="...",      # Custom even row styling
-                  index=True,                # Show index
-                  width="100%",              # Table width
-                  caption="My DataFrame",    # Table caption
-                  highlight_cols=["col1"],   # Highlight columns
-                  highlight_rows=[0, 2],     # Highlight rows
-                  highlight_cells={(0,0): "..."}, # Highlight specific cells
-                  font_size="14px",          # Custom font size for all cells
-                  text_align="center")       # Text alignment for all cells
+from colab_print import header, info, success, error, button
+
+# Simple animations
+header("Fade In Header", animate="fadeIn")
+info("Slide Down Info", animate="slideInDown")
+success("Bounce Success", animate="bounceIn")
+error("Shake Error", animate="shakeX")
+
+# Animation with duration and delay
+header("Custom Animation", 
+       animate="zoomIn",
+       animation_duration="1.5s",
+       animation_delay="0.5s")
+
+# Button with animation
+button("Pulse Button", animate="pulse", animation_iteration="infinite")
 ```
 
-## Advanced List Display
+### The Printer Class API
 
-Colab Print automatically detects and optimally displays complex data structures:
+<a id="printer-api"></a>
+The `Printer` class is the main entry point for the library's functionality:
 
 ```python
-from colab_print import list_
-import numpy as np
-import pandas as pd
+from colab_print import Printer
 
-# Nested lists are visualized with hierarchical styling
-nested_list = [1, 2, [3, 4, [5, 6]], 7]
-list_(nested_list)
+# Create a printer instance
+printer = Printer()
 
-# Matrices are displayed as tables automatically
-matrix = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
-list_(matrix)
+# Text display methods
+printer.display(text, style="default", animate=None, **inline_styles)
+printer.display_code(code, style="code_block", animate=None, **inline_styles)
 
-# NumPy arrays are handled seamlessly
-np_array = np.array([[1, 2, 3], [4, 5, 6]])
-list_(np_array)
+# Data display methods
+printer.display_list(items, ordered=False, style="default", **list_options)
+printer.display_dict(data, style="default", **dict_options)
+printer.display_table(headers, rows, style="default", **table_options)
+printer.display_df(df, style="default", **df_options)
 
-# Pandas data structures work too
-series = pd.Series([1, 2, 3, 4])
-list_(series)
+# Interactive elements
+printer.display_progress(total, desc="", style="default", **progress_options)
+printer.update_progress(progress_id, current, total=None)
+printer.display_button(text, on_click=None, style="interactive_button", **button_options)
+printer.update_button_text(button_id, new_text)
+printer.enable_button(button_id, enabled)
 
-# Control display format manually if needed
-list_(matrix, matrix_mode=False)  # Force list display for a matrix
+# Visualization
+printer.display_mermaid(diagram, theme="default", style="default", **options)
+printer.display_md(source, is_url=False, style="default", animate=None, **options)
+
+# Styling methods
+printer.add_style(style_name, style_definition)
+printer.create_styled_display(style, **default_style_overrides)
 ```
 
-## Advanced Usage
-
-### Creating Custom Themes
-
-```python
-custom_themes = {
-    'dark': 'color: white; background-color: #333; font-size: 16px;',
-    'fancy': 'color: #8A2BE2; font-family: "Brush Script MT", cursive; font-size: 20px;'
-}
-
-printer = Printer(additional_styles=custom_themes)
-printer.display("Dark theme", style="dark")
-printer.display("Fancy theme", style="fancy")
-```
-
-### Creating Reusable Display Functions
-
-```python
-# Create a function with predefined styling
-my_header = printer.create_styled_display("header", color="#FF5722", font_size="24px")
-
-# Use it multiple times with consistent styling
-my_header("First Section")
-my_header("Second Section")
-
-# Still allows overrides at call time
-my_header("Special Section", color="#9C27B0")
-```
-
-### Handling Non-Notebook Environments
-
-The library gracefully handles non-IPython environments by printing fallback text representations:
-
-```python
-# This will work in regular Python scripts
-printer.display_list([1, 2, 3])
-printer.display_dict({'a': 1})
-printer.display_df(df)
-```
-
+<a id="exception-handling"></a>
 ## Exception Handling
 
 Colab Print includes a comprehensive exception hierarchy for robust error handling:
 
 ```python
-from colab_print import (
+from colab_print.exception import (
     ColabPrintError,        # Base exception
     StyleNotFoundError,     # When a style isn't found
     DataFrameError,         # DataFrame-related issues
     InvalidParameterError,  # Parameter validation failures
-    HTMLRenderingError      # HTML rendering problems
+    HTMLRenderingError,     # HTML rendering problems
+    ButtonError             # Button-related issues
+    # ...                   # Import More As Needed
 )
 
 try:
     printer.display("Some text", style="non_existent_style")
 except StyleNotFoundError as e:
     print(f"Style error: {e}")
+    
+try:
+    button("Test", on_click=123)  # Invalid callback
+except InvalidParameterError as e:
+    print(f"Parameter error: {e}")
 ```
 
-## Full Examples
-
-For a comprehensive demonstration of all features, please see the example script:
-
-[example.py](https://github.com/alaamer12/colab-print/blob/main/example.py)
-
-This script covers:
-- Text, List, Dictionary, Table, and DataFrame display
-- Using built-in styles and inline styles
-- Adding custom styles
-- Creating a Printer instance with custom themes
-- Highlighting options for DataFrames
-- Progress bar usage and customization
-- Advanced list and nested structure display
-- Exception handling
-- Fallback behavior notes
-
+<a id="contributing"></a>
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-## License
+<a href="https://github.com/alaamer12/colab-print/blob/main/CHANGELOG.md" id="changelog"></a>
+## [CHANGELOG.md](https://github.com/alaamer12/colab-print/blob/main/CHANGELOG.md)
+
+We maintain a detailed changelog following semantic versioning (e.g., v1.0.0, v1.1.0-beta) that documents all notable changes to this project. Changes are categorized as:
+
+- **Added** - New features
+- **Changed** - Changes in existing functionality 
+- **Deprecated** - Soon-to-be removed features
+- **Removed** - Removed features
+- **Fixed** - Bug fixes
+- **Security** - Security vulnerability fixes
+
+See the [CHANGELOG.md](https://github.com/alaamer12/colab-print/blob/main/CHANGELOG.md) file for the full version history.
+
+<a href="https://github.com/alaamer12/colab-print/blob/main/LICENSE" id="license"></a>
+## [License](https://github.com/alaamer12/colab-print/blob/main/LICENSE)
 
 This project is licensed under the MIT License - see the LICENSE file for details.

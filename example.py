@@ -7,15 +7,17 @@ styled text, lists, dictionaries, tables, and pandas DataFrames in environments
 that support IPython display (like Jupyter notebooks or Google Colab).
 """
 
-import pandas as pd
+import time
+
 import numpy as np  # Added for array examples
+import pandas as pd
+
 from colab_print import (
     Printer, header, title, subtitle, section_divider, subheader,
     code, card, quote, badge, data_highlight, footer,
     highlight, info, success, warning, error, muted, primary, secondary,
     dfd, table, list_, dict_, progress, mermaid, md
 )
-import time
 
 P = Printer()
 
@@ -82,11 +84,11 @@ def demo_printer_class():
     P.display_df(df, caption="Student Scores")
     P.display_df(df, style="info", max_rows=3, precision=1, caption="Limited Rows & Precision")
     P.display_df(df, style="success",
-                       index=False,
-                       highlight_cols=['Name', 'Score'],
-                       highlight_rows={1: "background-color: #DFF0D8;"},  # Bob
-                       highlight_cells={(4, 'Score'): "background-color: yellow; font-weight: bold;"},  # Eve's score
-                       caption="Styled DataFrame without Index")
+                 index=False,
+                 highlight_cols=['Name', 'Score'],
+                 highlight_rows={1: "background-color: #DFF0D8;"},  # Bob
+                 highlight_cells={(4, 'Score'): "background-color: yellow; font-weight: bold;"},  # Eve's score
+                 caption="Styled DataFrame without Index")
 
     # --- Custom Styles & Themes --- 
     print("\n--- Custom Style & Theme Examples ---")
@@ -737,13 +739,13 @@ def demo_animation():
     """Demo animation effects."""
 
     print("\n=== DEMO: Animation Effects ===")
-    
+
     # --- Basic Animations ---
     title("Animation Effects Demo", animate="fadeIn")
     subtitle("Showcasing Animate.css integration", animate="slideInRight")
-    
+
     section_divider("Attention Seekers", animate="pulse")
-    
+
     time.sleep(0.5)
     info("Pulse Effect", animate="pulse")
     time.sleep(0.5)
@@ -752,9 +754,9 @@ def demo_animation():
     error("Bounce Effect", animate="bounce")
     time.sleep(0.5)
     success("Flash Effect", animate="flash")
-    
+
     section_divider("Entrances", animate="flipInX")
-    
+
     time.sleep(0.5)
     card("Fade In", animate="fadeIn")
     time.sleep(0.5)
@@ -763,9 +765,9 @@ def demo_animation():
     card("Slide In Right", animate="slideInRight")
     time.sleep(0.5)
     card("Bounce In", animate="bounceIn")
-    
+
     section_divider("Exits", animate="flipInY")
-    
+
     time.sleep(0.5)
     code("# This code block will fade out\nprint('Hello, world!')", animate="fadeOut", delay="3s")
     time.sleep(0.5)
@@ -774,9 +776,9 @@ def demo_animation():
     highlight("Slide Out Down", animate="slideOutDown", delay="3s")
     time.sleep(0.5)
     quote("This quote will disappear to the right", animate="slideOutRight", delay="3s")
-    
+
     section_divider("Complex Combinations", animate="fadeInUp")
-    
+
     time.sleep(0.5)
     headers = ["Animation", "Duration", "Delay"]
     rows = [
@@ -785,7 +787,7 @@ def demo_animation():
         ["pulse", "3s", "2s"]
     ]
     table(headers, rows, caption="Animation Properties", animate="zoomIn")
-    
+
     time.sleep(0.5)
     sample_dict = {
         "name": "Animate.css",
@@ -793,7 +795,7 @@ def demo_animation():
         "animations": ["Attention seekers", "Entrances", "Exits", "Others"]
     }
     dict_(sample_dict, animate="rotateIn")
-    
+
     # Animation with custom styling
     time.sleep(0.5)
     header("Custom Animation Styling", animate="fadeInLeft", animation_duration="2s", animation_delay="0.5s")
@@ -882,7 +884,7 @@ This is the end of our markdown example document.
     # --- Basic Examples ---
     header("Basic Markdown Example")
     info("Display markdown from a file:")
-    
+
     # Using the Printer class directly
     P = Printer()
     P.display_md('examples/markdown/basic.md')
@@ -908,16 +910,18 @@ This is the end of our markdown example document.
     info("Loading markdown content from a URL:")
     md('https://raw.githubusercontent.com/adam-p/markdown-here/master/README.md', is_url=True)
 
+
 def divider(title: str) -> None:
     """Print a divider with title."""
     print("\n" + "=" * 50)
     print(f"  {title}")
     print("=" * 50 + "\n")
 
+
 def demo_basic_tables() -> None:
     """Demonstrate basic table creation with different data structures."""
     divider("BASIC TABLES")
-    
+
     # Simple table with list inputs
     print("Basic table with list data:")
     P.display_table(
@@ -928,7 +932,7 @@ def demo_basic_tables() -> None:
             ["Charlie", 35, "Chicago"]
         ]
     )
-    
+
     # Table with tuple inputs
     print("\nTable with tuple data:")
     P.display_table(
@@ -939,7 +943,7 @@ def demo_basic_tables() -> None:
             ("Headphones", 149.99, 50)
         ]
     )
-    
+
     # Table with mixed input types
     print("\nTable with mixed data types:")
     P.display_table(
@@ -951,23 +955,24 @@ def demo_basic_tables() -> None:
         ]
     )
 
+
 def demo_numpy_arrays() -> None:
     """Demonstrate tables with NumPy arrays."""
     divider("NUMPY ARRAYS")
-    
+
     # Create a 2D numpy array
     data = np.array([
         [1, 2, 3, 4],
         [5, 6, 7, 8],
         [9, 10, 11, 12]
     ])
-    
+
     print("Table from NumPy array:")
     P.display_table(
         ["Col 1", "Col 2", "Col 3", "Col 4"],
         data.tolist()
     )
-    
+
     # Table with mixed numpy data
     print("\nTable with mixed NumPy data types:")
     P.display_table(
@@ -979,10 +984,11 @@ def demo_numpy_arrays() -> None:
         ]
     )
 
+
 def demo_dictionary_source() -> None:
     """Demonstrate using dictionaries as data sources."""
     divider("DICTIONARY SOURCES")
-    
+
     # Dictionary with scalar values (single row)
     print("Dictionary with scalar values:")
     P.display_table(source_dict={
@@ -991,7 +997,7 @@ def demo_dictionary_source() -> None:
         "Stock": 42,
         "Available": True
     })
-    
+
     # Dictionary with list values (multiple rows)
     print("\nDictionary with list values (column-oriented data):")
     P.display_table(source_dict={
@@ -999,26 +1005,27 @@ def demo_dictionary_source() -> None:
         "Age": [30, 25, 35],
         "City": ["New York", "San Francisco", "Chicago"]
     })
-    
+
     # Dictionary with mixed value types
     print("\nDictionary with mixed value types:")
     P.display_table(source_dict={
         "Category": ["Electronics", "Furniture", "Books"],
         "Items": [
-            ["Laptop", "Phone", "Tablet"], 
-            ["Chair", "Table", "Desk"], 
+            ["Laptop", "Phone", "Tablet"],
+            ["Chair", "Table", "Desk"],
             ["Fiction", "Non-fiction"]
         ],
         "In Stock": [True, False, True]
     })
 
+
 def demo_large_data() -> None:
     """Demonstrate handling of large data that gets condensed."""
     divider("LARGE DATA CONDENSING")
-    
+
     # Create a large list
     large_list = list(range(100))
-    
+
     print("Table with large lists that get condensed:")
     P.display_table(
         ["Data Type", "Sample"],
@@ -1030,10 +1037,11 @@ def demo_large_data() -> None:
         ]
     )
 
+
 def demo_styling_options() -> None:
     """Demonstrate various styling options."""
     divider("STYLING OPTIONS")
-    
+
     # Basic styling with width
     print("Custom width (50%):")
     P.display_table(
@@ -1041,7 +1049,7 @@ def demo_styling_options() -> None:
         [["Alpha", 10], ["Beta", 20], ["Gamma", 30]],
         width="50%"
     )
-    
+
     # Using caption
     print("\nTable with caption:")
     P.display_table(
@@ -1049,7 +1057,7 @@ def demo_styling_options() -> None:
         [["Q1", "$10M", "+5%"], ["Q2", "$12M", "+20%"], ["Q3", "$15M", "+25%"]],
         caption="Quarterly Financial Results"
     )
-    
+
     # Custom header and row styles
     print("\nCustom header and row styles:")
     P.display_table(
@@ -1058,7 +1066,7 @@ def demo_styling_options() -> None:
         custom_header_style="background-color: #4CAF50; color: white; padding: 10px;",
         custom_row_style="padding: 8px; text-align: center;"
     )
-    
+
     # Inline styles
     print("\nInline styles:")
     P.display_table(
@@ -1069,13 +1077,14 @@ def demo_styling_options() -> None:
         margin_bottom="20px"
     )
 
+
 def demo_compact_parameter() -> None:
     """Demonstrate the compact parameter."""
     divider("COMPACT PARAMETER")
-    
+
     # Create a large list
     large_list = list(range(100))
-    
+
     print("Large data with compact=True (default):")
     P.display_table(
         ["Data Type", "Sample"],
@@ -1086,7 +1095,7 @@ def demo_compact_parameter() -> None:
         ],
         compact=True
     )
-    
+
     print("\nLarge data with compact=False (no condensing):")
     P.display_table(
         ["Data Type", "Sample"],
@@ -1098,24 +1107,23 @@ def demo_compact_parameter() -> None:
         compact=False
     )
 
+
 def demo_table_display():
     """Demo showcasing the table display feature."""
 
     title("Table Display Examples")
     demo_basic_tables()
-    
+
     try:
         demo_numpy_arrays()
     except ImportError:
         print("NumPy not available, skipping NumPy demos.")
-    
+
     demo_dictionary_source()
     demo_large_data()
     demo_styling_options()
     demo_compact_parameter()
-    
-    
-    
+
 
 def main():
     """Main function to run the examples."""
