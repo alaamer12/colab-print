@@ -1,3 +1,54 @@
+"""
+Core implementation of the Colab Print display framework.
+
+This module contains the primary implementation of all display components and the main
+Printer class that orchestrates the different display methods. It provides a rich
+set of displayer classes for rendering various types of content as styled HTML
+in Jupyter/Colab notebook environments.
+
+The module implements a hierarchical class structure with a base `Displayer` abstract
+class and specialized displayers for different content types (text, code, tables,
+DataFrames, lists, dictionaries, progress bars, interactive buttons, etc.).
+
+Classes:
+    Displayer: Abstract base class for all display components
+    TextDisplayer: For displaying styled text content
+    CodeDisplayer: For displaying code with syntax highlighting
+    TableDisplayer: For displaying tabular data with customizable styling
+    DFDisplayer: For displaying pandas DataFrames with advanced formatting
+    ListDisplayer: For displaying lists, arrays, and nested structures
+    DictDisplayer: For displaying dictionaries with key-value styling
+    MermaidDisplayer: For rendering Mermaid.js diagrams
+    MDDisplayer: For rendering Markdown content
+    ProgressDisplayer: For creating and updating progress bars
+    ButtonDisplayer: For creating interactive buttons with callbacks
+    Printer: Main class that orchestrates all displayers and exposes API
+
+Example:
+    ```python
+    from colab_print._core import Printer
+    
+    # Create a printer instance
+    printer = Printer()
+    
+    # Display styled text
+    printer.display("Hello World!", style="highlight")
+    
+    # Display a data table
+    headers = ["Name", "Age", "City"]
+    rows = [["Alice", 28, "New York"], ["Bob", 34, "San Francisco"]]
+    printer.display_table(headers, rows, style="default")
+    
+    # Create a progress bar
+    progress_id = printer.display_progress(total=100, desc="Processing...")
+    
+    # Update the progress bar
+    for i in range(100):
+        # Do some work...
+        printer.update_progress(progress_id, i + 1)
+    ```
+"""
+
 # noinspection PyUnresolvedReferences
 import abc
 import html
@@ -11,16 +62,16 @@ from typing import Callable, Optional, Union, Dict, List, Any, Tuple, Literal
 import pandas as pd
 from IPython.display import display as ip_display, HTML, Javascript
 
-from colab_print._exception import (ColabPrintError, TextError, ColorError,
-                                    DisplayEnvironmentError, DisplayMethodError, DisplayUpdateError, ListError,
-                                    StyleNotFoundError, StyleError,
-                                    StyleConflictError, StyleParsingError, TableError, DictError,
-                                    IPythonNotAvailableError, ProgressError, ConversionError, ArrayConversionError,
-                                    FormattingError, HTMLGenerationError, HTMLRenderingError, DataFrameError,
-                                    MatrixDetectionError, NestedStructureError, MermaidError, CodeError,
-                                    CodeParsingError, SyntaxHighlightingError, InvalidParameterError, AnimationError,
-                                    ButtonError, ButtonCallbackError,
-                                    MarkdownSourceError, MarkdownParsingError, MarkdownRenderingError)
+from colab_print.exception import (ColabPrintError, TextError, ColorError,
+                                   DisplayEnvironmentError, DisplayMethodError, DisplayUpdateError, ListError,
+                                   StyleNotFoundError, StyleError,
+                                   StyleConflictError, StyleParsingError, TableError, DictError,
+                                   IPythonNotAvailableError, ProgressError, ConversionError, ArrayConversionError,
+                                   FormattingError, HTMLGenerationError, HTMLRenderingError, DataFrameError,
+                                   MatrixDetectionError, NestedStructureError, MermaidError, CodeError,
+                                   CodeParsingError, SyntaxHighlightingError, InvalidParameterError, AnimationError,
+                                   ButtonError, ButtonCallbackError,
+                                   MarkdownSourceError, MarkdownParsingError, MarkdownRenderingError)
 from colab_print.utilities import DEFAULT_THEMES, SPECIAL_STYLES, process_animation_class, df_like
 
 __all__ = [

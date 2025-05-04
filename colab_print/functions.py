@@ -1,3 +1,54 @@
+"""
+Convenience functions for Colab Print library.
+
+This module provides a collection of shortcut functions for displaying styled content
+in Jupyter/Colab notebooks. These functions offer an easy-to-use interface to the
+more comprehensive Printer class functionality without requiring direct instantiation
+of a Printer object.
+
+The functions are organized into several categories:
+- Text styling: header(), title(), subtitle(), highlight(), etc.
+- Content display: dfd() for DataFrames, table() for tabular data, list_() for lists/arrays
+- Feedback display: info(), success(), warning(), error() for status messages
+- Visual elements: mermaid() for diagrams, code() for syntax highlighting
+- Interactive elements: button() with callback functionality
+- Progress tracking: progress() with tqdm-compatible interface
+
+These functions simplify common display tasks and provide a clean, functional interface
+to the library's rich display capabilities.
+
+Example:
+    ```python
+    from colab_print.functions import header, info, success, table, dfd
+    import pandas as pd
+    
+    # Display styled headers and text
+    header("Data Analysis Results")
+    info("Processing the dataset...")
+    
+    # Display a simple table
+    table(
+        headers=["Name", "Score", "Status"],
+        rows=[
+            ["Alice", 95, "Pass"],
+            ["Bob", 82, "Pass"],
+            ["Charlie", 65, "Fail"]
+        ]
+    )
+    
+    # Display a pandas DataFrame with highlighting
+    df = pd.DataFrame({
+        "Name": ["Alice", "Bob", "Charlie"],
+        "Score": [95, 82, 65],
+        "Status": ["Pass", "Pass", "Fail"]
+    })
+    dfd(df, highlight_cols=["Score"])
+    
+    # Show success message
+    success("Analysis completed successfully!")
+    ```
+"""
+
 # Text display shortcuts - primary display styles
 from typing import Optional, Any, List, Dict, Union, Callable, Literal
 

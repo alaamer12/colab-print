@@ -1,7 +1,45 @@
+"""
+Utility functions and constants for Colab Print library.
+
+This module provides utility functions, data classes, and constants used throughout
+the Colab Print library. It includes helper functions for environment detection,
+animation processing, and data validation, as well as predefined styles and themes
+for consistent styling across the library.
+
+The module includes:
+- Data classes for parameter organization (DFDisplayParams, TableDisplayParams)
+- Constants for styling (DEFAULT_THEMES, SPECIAL_STYLES, VALID_ANIMATIONS)
+- Utility functions for environment detection (is_in_notebook)
+- Animation processing helpers (process_animation_class)
+- Data type validation helpers (df_like, array_like)
+
+These utilities provide the foundation for the library's functionality and ensure
+consistent behavior across different display components.
+
+Example:
+    ```python
+    from colab_print.utilities import process_animation_class, is_in_notebook, DFDisplayParams
+    
+    # Check if running in a notebook environment
+    if is_in_notebook():
+        # Process an animation name into a valid CSS class
+        animation_class = process_animation_class("fadeIn")
+        # animation_class -> "animate__animated animate__fadeIn"
+        
+        # Create display parameters for a DataFrame
+        params = DFDisplayParams(
+            style="default",
+            max_rows=20,
+            highlight_cols=["important_column"],
+            caption="Dataset Overview"
+        )
+    ```
+"""
+
 from dataclasses import dataclass
 from typing import Optional, Union, List, Dict
 
-from colab_print._exception import AnimationError
+from colab_print.exception import AnimationError
 
 __all__ = [
     # Classes
@@ -295,6 +333,7 @@ def is_in_notebook() -> bool:
         return False
 
 
+# noinspection PyCompatibility
 def df_like(df, debug: bool = False, threshold: float = 0.7) -> bool:
     """
     Check if an object is dataframe-like by examining common dataframe attributes and methods.
@@ -305,7 +344,8 @@ def df_like(df, debug: bool = False, threshold: float = 0.7) -> bool:
     
     Args:
         df: The object to check
-        
+        debug: If True, print debugging information
+        threshold: The minimum ratio of common properties and methods to consider the object dataframe-like
     Returns:
         bool: True if the object is dataframe-like, False otherwise
     """

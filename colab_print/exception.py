@@ -1,3 +1,57 @@
+"""
+Exception classes for the Colab Print library.
+
+This module defines a comprehensive exception hierarchy for the Colab Print library,
+providing specialized exceptions for different error categories and scenarios.
+These exceptions enable precise error handling and clear error messages throughout
+the library.
+
+The exception hierarchy is designed with a base `ColabPrintError` class and multiple
+specialized subclasses organized by error category:
+
+Categories:
+    - Display Environment: Errors related to the notebook environment
+    - Style: Errors related to styling and CSS
+    - Content Type: Errors related to specific content types (text, tables, etc.)
+    - Formatting and Parameter: Errors related to invalid parameters
+    - Conversion and Rendering: Errors related to data conversion and HTML rendering
+    - Structure: Errors related to processing nested structures
+    - Method: Errors related to display methods
+    - Animation: Errors related to CSS animations
+    - Button: Errors related to interactive buttons
+
+Example:
+    ```python
+    from colab_print._exception import StyleNotFoundError
+    
+    def apply_style(style_name):
+        available_styles = {"default", "highlight", "error"}
+        if style_name not in available_styles:
+            raise StyleNotFoundError(
+                style_name=style_name,
+                message=f"Style '{style_name}' not found. Available styles: {', '.join(available_styles)}"
+            )
+        # Apply the style...
+    ```
+
+Note:
+    The exception hierarchy follows this structure:
+    - ColabPrintError (base)
+        - DisplayEnvironmentError
+            - IPythonNotAvailableError
+            - HTMLRenderingError
+        - StyleError
+            - StyleNotFoundError
+        - ContentTypeError
+        - ParameterError
+        - RenderingError
+        - StructureError
+        - MethodError
+        - AnimationError
+        - ButtonError
+"""
+
+
 # Custom Exception Hierarchy for colab-print library
 class ColabPrintError(Exception):
     """Base exception class for all colab-print exceptions."""
