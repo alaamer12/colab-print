@@ -19,6 +19,7 @@ Categories:
     - Method: Errors related to display methods
     - Animation: Errors related to CSS animations
     - Button: Errors related to interactive buttons
+    - PDF: Errors related to PDF display and processing
 
 Example:
     ```python
@@ -49,6 +50,10 @@ Note:
         - MethodError
         - AnimationError
         - ButtonError
+        - PDFError
+            - PDFSourceError
+            - PDFRenderingError
+            - PDFDownloadError
 """
 
 
@@ -363,3 +368,40 @@ class ButtonCallbackError(ButtonError):
             message = f"Error registering or executing callback '{callback_name}'"
         super().__init__(message)
         self.callback_name = callback_name
+
+
+# PDF Display Exceptions
+class PDFError(ContentTypeError):
+    """Base exception raised for PDF display issues."""
+
+    def __init__(self, message="PDF display error"):
+        super().__init__(expected_type="PDF", message=message)
+
+
+class PDFSourceError(PDFError):
+    """Exception raised when there's an issue with the PDF source (file or URL)."""
+
+    def __init__(self, source="Unknown", is_url=False, message=None):
+        source_type = "URL" if is_url else "file path"
+        if message is None:
+            message = f"Error accessing PDF content from {source_type}: {source}"
+        super().__init__(message)
+        self.source = source
+        self.is_url = is_url
+
+
+class PDFRenderingError(PDFError):
+    """Exception raised when rendering PDF content fails."""
+
+    def __init__(self, message="Failed to render PDF content"):
+        super().__init__(message)
+
+
+class PDFDownloadError(PDFError):
+    """Exception raised when downloading a PDF from a URL fails."""
+
+    def __init__(self, url="Unknown", message=None):
+        if message is None:
+            message = f"Failed to download PDF from URL: {url}"
+        super().__init__(message)
+        self.url = url

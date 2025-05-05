@@ -1,3 +1,4 @@
+# noinspection da
 """
 Core implementation of the Colab Print display framework.
 
@@ -26,26 +27,27 @@ Classes:
 
 Example:
     ```python
-    from colab_print._core import Printer
+    >>> from colab_print._core import Printer
     
-    # Create a printer instance
-    printer = Printer()
+    >>> # Create a printer instance
+    >>> printer = Printer()
     
-    # Display styled text
-    printer.display("Hello World!", style="highlight")
+    >>> # Display styled text
+    >>> printer.display("Hello World!", style="highlight")
     
-    # Display a data table
-    headers = ["Name", "Age", "City"]
-    rows = [["Alice", 28, "New York"], ["Bob", 34, "San Francisco"]]
-    printer.display_table(headers, rows, style="default")
+    >>> # Display a data table
+    >>> headers = ["Name", "Age", "City"]
+    >>> rows = [["Alice", 28, "New York"], ["Bob", 34, "San Francisco"]]
+    >>> printer.display_table(headers, rows, style="default")
     
-    # Create a progress bar
-    progress_id = printer.display_progress(total=100, desc="Processing...")
+    >>> # Create a progress bar
+    >>> progress_id = printer.display_progress(total=100, desc="Processing...")
     
-    # Update the progress bar
-    for i in range(100):
-        # Do some work...
-        printer.update_progress(progress_id, i + 1)
+    >>> # Update the progress bar
+    >>> for i in range(100):
+    ...   # Do some work...
+    ...   printer.update_progress(progress_id, i + 1)
+
     ```
 """
 
@@ -71,7 +73,8 @@ from colab_print.exception import (ColabPrintError, TextError, ColorError,
                                    MatrixDetectionError, NestedStructureError, MermaidError, CodeError,
                                    CodeParsingError, SyntaxHighlightingError, InvalidParameterError, AnimationError,
                                    ButtonError, ButtonCallbackError,
-                                   MarkdownSourceError, MarkdownParsingError, MarkdownRenderingError)
+                                   MarkdownSourceError, MarkdownParsingError, MarkdownRenderingError,
+                                   PDFSourceError, PDFDownloadError, PDFRenderingError)
 from colab_print.utilities import DEFAULT_THEMES, SPECIAL_STYLES, process_animation_class, df_like
 
 __all__ = [
@@ -3654,6 +3657,793 @@ class ButtonDisplayer(Displayer):
             raise ButtonError(f"Failed to update button state: {str(e)}")
 
 
+class PDFDisplayer(Displayer):
+    """
+    Component for displaying PDF files in Jupyter notebooks.
+    
+    This displayer enables interactive display of PDF documents from file paths,
+    URLs, or through a file picker interface. It provides a viewer with page
+    navigation controls and responsive design.
+    """
+
+    def __init__(self, styles: Dict[str, str]):
+        """
+        Initialize PDF displayer with styles.
+        
+        Args:
+            styles: Dictionary of available named styles
+        """
+        super().__init__(styles)
+
+    def display(self, source: Optional[str] = None, *,
+                style: str = "default",
+                is_url: bool = False,
+                animate: Optional[str] = None,
+                **inline_styles) -> None:
+        """
+        Display a PDF with interactive viewer.
+        
+        Args:
+            source: Path to PDF file, URL to PDF, or None for file picker
+            style: Style name from available styles
+            is_url: Whether the source is a URL
+            animate: Optional animation effect
+            **inline_styles: Additional CSS styles to apply
+            
+        Raises:
+            IPythonNotAvailableError: If IPython display capabilities are not available
+            PDFSourceError: If there's an error accessing the PDF file
+            PDFDownloadError: If downloading a PDF from URL fails
+            PDFRenderingError: If rendering the PDF fails
+        """
+        try:
+            # Get style attributes
+            style_attributes = self._get_style_attributes(style)
+
+            # Process inline styles to CSS format
+            inline_css = self._process_inline_styles(inline_styles)
+
+            # Generate HTML content with PDF viewer
+            html_content = self._generate_pdf_viewer_html(
+                source=source,
+                is_url=is_url,
+                animate=animate,
+                style_attributes=style_attributes,
+                inline_css=inline_css
+            )
+
+            # Display the content
+            self._display_html(html_content)
+        except Exception as e:
+            # Handle specific exceptions
+            if isinstance(e, (FileNotFoundError, PermissionError)):
+                raise PDFSourceError(source=source, is_url=is_url) from e
+            elif "Error downloading PDF from URL" in str(e):
+                raise PDFDownloadError(url=source, message=str(e)) from e
+            elif isinstance(e, IPythonNotAvailableError):
+                raise
+            else:
+                raise PDFRenderingError(f"Failed to render PDF: {str(e)}") from e
+
+    def _get_style_attributes(self, style_name: str) -> str:
+        """
+        Get style string for the requested style.
+        
+        Args:
+            style_name: Name of the style to retrieve
+            
+        Returns:
+            Style string
+            
+        Raises:
+            StyleNotFoundError: If the requested style is not found
+        """
+        if style_name not in self.styles:
+            raise StyleNotFoundError(style_name=style_name)
+        return self.styles[style_name]
+
+    @staticmethod
+    def _display_html(html_content: str) -> None:
+        """
+        Display HTML content using IPython's display capabilities.
+        
+        Args:
+            html_content: HTML content to display
+            
+        Raises:
+            IPythonNotAvailableError: If IPython display is not available
+        """
+        try:
+            from IPython.display import HTML, display
+            display(HTML(html_content))
+        except ImportError:
+            raise IPythonNotAvailableError(
+                "IPython.display is required to display PDFs. "
+                "Please ensure you're in a Jupyter or Google Colab environment."
+            )
+
+    def _generate_pdf_viewer_html(self, source: Optional[str], is_url: bool,
+                                  animate: Optional[str],
+                                  style_attributes: str,
+                                  inline_css: str) -> str:
+        """
+        Generate HTML content for the PDF viewer.
+        
+        Args:
+            source: Path to PDF file, URL, or None for file picker
+            is_url: Whether the source is a URL
+            animate: Optional animation effect
+            style_attributes: Style string
+            inline_css: Additional CSS styles
+            
+        Returns:
+            Complete HTML content for displaying PDF viewer
+            
+        Raises:
+            FileNotFoundError: If the local file does not exist
+            PDFDownloadError: If there's an error downloading the PDF from URL
+            HTMLGenerationError: If there's an error generating the HTML content
+        """
+        try:
+
+            # Set up animation
+            animation_html, animation_class = self._prepare_animation(animate)
+
+            # Process the source and prepare auto-loading
+            file_input_visible, auto_load_script = self._process_pdf_source(source, is_url)
+
+            # Combine styles
+            container_style = self._combine_styles(style_attributes, inline_css)
+
+            # Generate the final HTML content
+            return self._generate_html_content(
+                animation_html,
+                animation_class,
+                file_input_visible,
+                auto_load_script,
+                container_style
+            )
+        except Exception as e:
+            raise HTMLGenerationError(component="PDF viewer", message=str(e))
+
+    def _prepare_animation(self, animate: Optional[str]) -> tuple[str, str]:
+        """
+        Prepare animation HTML and class if animation is requested.
+        
+        Args:
+            animate: Animation effect name or None
+            
+        Returns:
+            Tuple of (animation_html, animation_class)
+        """
+        if animate:
+            animation_html = self._load_animate_css()
+            animation_class = f"animate__animated animate__{animate}"
+        else:
+            animation_html = ""
+            animation_class = ""
+        return animation_html, animation_class
+
+    def _process_pdf_source(self, source: Optional[str], is_url: bool) -> tuple[bool, str]:
+        """
+        Process the PDF source and prepare auto-loading script.
+        
+        Args:
+            source: Path to PDF file, URL, or None for file picker
+            is_url: Whether the source is a URL
+            
+        Returns:
+            Tuple of (file_input_visible, auto_load_script)
+            
+        Raises:
+            FileNotFoundError: If the local file does not exist
+            PDFDownloadError: If there's an error downloading the PDF from URL
+        """
+
+        # Just show file picker if no source
+        if source is None:
+            return True, ""
+
+        # Handle URL source
+        if is_url and source.startswith(('http://', 'https://')):
+            return self._process_url_source(source)
+
+        # Handle local file source
+        return self._process_local_file(source)
+
+    def _process_url_source(self, url: str) -> tuple[bool, str]:
+        """
+        Download PDF from URL and prepare for display.
+        
+        Args:
+            url: URL to the PDF file
+            
+        Returns:
+            Tuple of (file_input_visible, auto_load_script)
+            
+        Raises:
+            PDFDownloadError: If there's an error downloading the PDF
+        """
+        import urllib.request
+        import logging
+
+        logger = logging.getLogger(__name__)
+
+        try:
+            temp_path = self._download_pdf_from_url(url, logger)
+            self._validate_pdf_file(temp_path, url)
+            auto_load_script = self._prepare_pdf_for_display(temp_path)
+            return True, auto_load_script
+        except urllib.error.URLError as e:
+            raise PDFDownloadError(
+                url=url,
+                message=f"URL error when downloading PDF: {str(e)}"
+            )
+        except urllib.error.HTTPError as e:
+            raise PDFDownloadError(
+                url=url,
+                message=f"HTTP error {e.code} when downloading PDF: {str(e)}"
+            )
+        except Exception as e:
+            raise PDFDownloadError(
+                url=url,
+                message=f"Error downloading PDF from URL: {str(e)}"
+            )
+
+    def _download_pdf_from_url(self, url: str, logger) -> str:
+        """
+        Download PDF from URL to a temporary file.
+        
+        Args:
+            url: URL to the PDF file
+            logger: Logger instance
+            
+        Returns:
+            Path to the downloaded temporary file
+        """
+        import os
+        import tempfile
+        import urllib.request
+        import hashlib
+        from typing import Optional
+
+        # Create a temporary file
+        temp_dir = tempfile.gettempdir()
+
+        # Extract filename from URL or create a default name
+        filename = os.path.basename(url) or "downloaded.pdf"
+        if not filename.endswith('.pdf'):
+            filename += '.pdf'
+
+        # Create a unique filename based on URL hash to avoid duplicates
+        url_hash = hashlib.md5(url.encode()).hexdigest()[:8]
+        hashed_filename = f"{url_hash}_{filename}"
+        temp_path = os.path.join(temp_dir, hashed_filename)
+
+        # Check if file already exists and is valid
+        if os.path.exists(temp_path) and os.path.getsize(temp_path) > 0:
+            return temp_path
+
+        # Download the file
+        logger.info(f"Downloading PDF from {url} to {temp_path}")
+
+        # Create a request with browser-like headers
+        headers = self._get_browser_headers(url)
+        req = urllib.request.Request(url, headers=headers)
+
+        # Download with proper error handling
+        response: Optional[urllib.request.urlopen] = None
+        try:
+            response = urllib.request.urlopen(req, timeout=30)
+            with open(temp_path, 'wb') as f:
+                f.write(response.read())
+        finally:
+            if response:
+                response.close()
+
+        return temp_path
+
+    @staticmethod
+    def _validate_pdf_file(file_path: str, url: str) -> None:
+        """
+        Validate that the downloaded file is a valid PDF.
+        
+        Args:
+            file_path: Path to the downloaded file
+            url: Original URL (for error reporting)
+            
+        Raises:
+            PDFDownloadError: If the file is not a valid PDF
+        """
+        import os
+
+        if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
+            raise PDFDownloadError(
+                url=url,
+                message="Failed to download PDF file"
+            )
+
+        # Verify the downloaded file is actually a PDF
+        with open(file_path, 'rb') as f:
+            header = f.read(5)
+            if header != b'%PDF-':
+                raise PDFDownloadError(
+                    url=url,
+                    message="Downloaded file is not a valid PDF"
+                )
+
+    def _prepare_pdf_for_display(self, file_path: str) -> str:
+        """
+        Prepare the PDF file for display by creating an auto-load script.
+        
+        Args:
+            file_path: Path to the PDF file
+            
+        Returns:
+            JavaScript code to auto-load the PDF
+        """
+        import base64
+        import mimetypes
+        import os
+
+        # Read the file
+        with open(file_path, 'rb') as f:
+            file_data = f.read()
+
+        file_type = mimetypes.guess_type(file_path)[0] or 'application/pdf'
+        filename = os.path.basename(file_path)
+
+        # Encode file data as base64
+        file_b64 = base64.b64encode(file_data).decode('utf-8')
+
+        # Script to create a file object and trigger the file input
+        return self._create_auto_load_script(file_b64, filename, file_type)
+
+    @staticmethod
+    def _get_browser_headers(url) -> dict:
+        """
+        Get browser-like headers for downloading PDFs.
+        
+        Returns:
+            Dictionary of headers
+        """
+        return {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'application/pdf,application/octet-stream,*/*;q=0.9',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Referer': url,
+            'Connection': 'keep-alive',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'cross-site',
+            'DNT': '1'
+        }
+
+    def _process_local_file(self, file_path: str) -> tuple[bool, str]:
+        """
+        Process local PDF file and prepare for display.
+        
+        Args:
+            file_path: Path to the local PDF file
+            
+        Returns:
+            Tuple of (file_input_visible, auto_load_script)
+            
+        Raises:
+            FileNotFoundError: If the file does not exist
+        """
+        import os
+        import base64
+        import mimetypes
+
+        # Check if file exists
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"The file '{file_path}' does not exist.")
+
+        # Read the file
+        with open(file_path, 'rb') as f:
+            file_data = f.read()
+
+        # Get filename from path
+        filename = os.path.basename(file_path)
+        file_type = mimetypes.guess_type(file_path)[0] or 'application/pdf'
+
+        # Encode file data as base64
+        file_b64 = base64.b64encode(file_data).decode('utf-8')
+
+        # Script to create a file object and trigger the file input
+        auto_load_script = self._create_blob_auto_load_script(file_b64, filename, file_type)
+        return True, auto_load_script
+
+    @staticmethod
+    def _combine_styles(style_attributes: str, inline_css: str) -> str:
+        """
+        Combine style attributes with inline CSS.
+        
+        Args:
+            style_attributes: Style string
+            inline_css: Additional CSS styles
+            
+        Returns:
+            Combined style string
+        """
+        if inline_css:
+            return f"{style_attributes}; {inline_css}"
+        return style_attributes
+
+    @staticmethod
+    def _create_blob_auto_load_script(file_b64: str, filename: str, file_type: str) -> str:
+        """
+        Create a JavaScript script to automatically load a PDF file into the PDF viewer.
+        
+        Args:
+            file_b64: Base64-encoded PDF data
+            filename: Name of the PDF file
+            file_type: MIME type of the PDF file
+            
+        Returns:
+            str: JavaScript script to automatically load the PDF file
+        """
+        blob_script = f"""
+                // Create file from local path data
+                try {{
+                    // Convert base64 to Blob
+                    const binaryString = atob("{file_b64}");
+                    const bytes = new Uint8Array(binaryString.length);
+                    for (let i = 0; i < binaryString.length; i++) {{
+                        bytes[i] = binaryString.charCodeAt(i);
+                    }}
+                    
+                    // Create a File object
+                    const fileData = new Blob([bytes], {{type: "{file_type}"}});
+                    const file = new File([fileData], "{filename}", {{type: "{file_type}"}});
+                    
+                    // Create a DataTransfer to set up the file input
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(file);
+                    
+                    // Set the file to the input element
+                    const fileInput = document.getElementById('file-selector');
+                    fileInput.files = dataTransfer.files;
+                    
+                    // Update file name display - using the Python variable directly
+                    document.getElementById('fileNameDisplay').innerHTML = '<span class="font-medium">{filename}</span>';
+                    
+                    // Trigger the change event
+                    const event = new Event('change', {{ bubbles: true }});
+                    fileInput.dispatchEvent(event);
+                }} catch (error) {{
+                    console.error('Error processing file:', error);
+                    document.getElementById('error-message').textContent = 'Error processing file: ' + error.message;
+                    document.getElementById('error-container').style.display = 'block';
+                }}
+                """
+
+        return blob_script
+
+    def _generate_html_content(self, animation_html: str, animation_class: str, file_input_visible: bool,
+                               auto_load_script: str, container_style: str) -> str:
+        """
+        Generate HTML content for the PDF viewer.
+        
+        Args:
+            animation_html: HTML content for the animation
+            animation_class: CSS class for the animation
+            file_input_visible: Whether the file input is visible
+            auto_load_script: JavaScript script to automatically load the PDF file
+            container_style: CSS style for the container
+            
+        Returns:
+            str: HTML content for the PDF viewer
+        """
+        js_html_content = self._generate_js_html_content(auto_load_script)
+
+        page_content = self._generate_page_content(animation_html, animation_class, js_html_content, file_input_visible,
+                                                   container_style)
+
+        return page_content
+
+    @staticmethod
+    def _generate_page_content(animation_html: str, animation_class: str, js_html_content: str,
+                               file_input_visible: bool, container_style: str) -> str:
+        """
+        Generate HTML content for the PDF viewer.
+        
+        Args:
+            animation_html: HTML content for the animation
+            animation_class: CSS class for the animation
+            js_html_content: JavaScript HTML content for the PDF viewer
+            file_input_visible: Whether the file input is visible
+            container_style: CSS style for the container
+            
+        Returns:
+            str: HTML content for the PDF viewer
+        """
+        page_content = f"""{animation_html}
+            <div class="{animation_class}" style="{container_style}">
+            <div style="font-family: 'Inter', sans-serif; width: 100%; max-width: 800px; margin: 0 auto;">
+                <div class="file-picker-container" style="display: {'block' if file_input_visible else 'none'}; background-color: #ffffff; padding: 1.5rem; border-radius: 0.5rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); width: 100%; max-width: 28rem; box-sizing: border-box; margin-bottom: 20px;">
+                    <h2 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; color: #374151; text-align: center;">Upload Your PDF</h2>
+                    
+                    <input type="file" id="file-selector" style="width: 0.1px; height: 0.1px; opacity: 0; overflow: hidden; position: absolute; z-index: -1;" accept=".pdf">
+                    
+                    <label for="file-selector" style="cursor: pointer; background-color: #2563eb; color: #ffffff; font-weight: 500; padding: 0.75rem 1.25rem; border-radius: 0.5rem; display: inline-flex; align-items: center; justify-content: center; width: 100%; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); transition: background-color 0.3s ease, box-shadow 0.3s ease; box-sizing: border-box;">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="height: 1.25rem; width: 1.25rem; margin-right: 0.5rem;">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                        <span>Choose a file</span>
+                    </label>
+                    
+                    <div id="fileNameDisplay" style="margin-top: 1rem; font-size: 0.875rem; color: #4b5563; background-color: #f9fafb; padding: 0.75rem; border-radius: 0.375rem; border: 1px solid #e5e7eb; min-height: 40px; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
+                        <span style="font-style: italic;">No file chosen</span>
+                    </div>
+                </div>
+                
+                <div id="error-container" style="display: none; color: #ef4444; margin-bottom: 15px;">
+                    <p id="error-message"></p>
+                </div>
+                
+                <div id="loading" style="display: none; text-align: center; margin: 20px 0;">
+                    <div style="border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 30px; height: 30px; animation: spin 2s linear infinite; margin: 0 auto;"></div>
+                    <p>Loading PDF...</p>
+                </div>
+                
+                <div style="width: 100%; max-width: 800px; height: 70vh; margin: 20px auto; position: relative; background-color: white; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); overflow: hidden;">
+                    <div id="page-container" style="width: 100%; height: 100%; overflow: auto; display: flex; justify-content: center;"></div>
+                </div>
+
+                <div style="display: flex; justify-content: center; margin-top: 10px; gap: 20px;">
+                    <button id="prev-page" style="padding: 10px 20px; background-color: #4285f4; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px;" disabled>Previous</button>
+                    <div style="margin: 0 10px; font-size: 16px; display: flex; align-items: center;">
+                        Page <span id="current-page">0</span> of <span id="total-pages">0</span>
+                    </div>
+                    <button id="next-page" style="padding: 10px 20px; background-color: #4285f4; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px;" disabled>Next</button>
+                </div>
+            </div>
+
+            {js_html_content}
+            </div>
+            """
+
+        return page_content
+
+    @staticmethod
+    def _generate_js_html_content(auto_load_script: str) -> str:
+        """
+        Generate JavaScript HTML content for the PDF viewer.
+        
+        Args:
+            auto_load_script: JavaScript script to automatically load the PDF file
+            
+        Returns:
+            str: JavaScript HTML content for the PDF viewer
+        """
+
+        js_content = f"""<script>
+                // Add PDF.js library
+                if (!window.pdfjsLib) {{
+                    const scriptTag = document.createElement('script');
+                    scriptTag.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js';
+                    document.head.appendChild(scriptTag);
+                    
+                    // Wait for script to load
+                    scriptTag.onload = function() {{
+                        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+                        initPdfViewer();
+                    }};
+                }} else {{
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+                    initPdfViewer();
+                }}
+                
+                function initPdfViewer() {{
+                    let pdfDoc = null;
+                    let currentPage = 1;
+                    let pageRendering = false;
+                    let pageNumPending = null;
+                    let scale = 1.5;
+
+                    const pageContainer = document.getElementById('page-container');
+                    const prevButton = document.getElementById('prev-page');
+                    const nextButton = document.getElementById('next-page');
+                    const currentPageEl = document.getElementById('current-page');
+                    const totalPagesEl = document.getElementById('total-pages');
+                    const loadingEl = document.getElementById('loading');
+                    const fileNameDisplay = document.getElementById('fileNameDisplay');
+
+                    function renderPage(pageNum) {{
+                        pageRendering = true;
+
+                        while (pageContainer.firstChild) {{
+                            pageContainer.removeChild(pageContainer.firstChild);
+                        }}
+
+                        pdfDoc.getPage(pageNum).then(function(page) {{
+                            const canvas = document.createElement('canvas');
+                            const ctx = canvas.getContext('2d');
+                            pageContainer.appendChild(canvas);
+
+                            const viewport = page.getViewport({{ scale }});
+                            canvas.height = viewport.height;
+                            canvas.width = viewport.width;
+
+                            const renderContext = {{
+                                canvasContext: ctx,
+                                viewport: viewport
+                            }};
+
+                            const renderTask = page.render(renderContext);
+                            renderTask.promise.then(function() {{
+                                pageRendering = false;
+                                if (pageNumPending !== null) {{
+                                    renderPage(pageNumPending);
+                                    pageNumPending = null;
+                                }}
+                            }});
+                        }});
+
+                        currentPageEl.textContent = pageNum;
+                        prevButton.disabled = pageNum <= 1;
+                        nextButton.disabled = pageNum >= pdfDoc.numPages;
+                    }}
+
+                    function queueRenderPage(pageNum) {{
+                        if (pageRendering) {{
+                            pageNumPending = pageNum;
+                        }} else {{
+                            renderPage(pageNum);
+                        }}
+                    }}
+
+                    function onPrevPage() {{
+                        if (currentPage <= 1) return;
+                        currentPage--;
+                        queueRenderPage(currentPage);
+                    }}
+
+                    function onNextPage() {{
+                        if (currentPage >= pdfDoc.numPages) return;
+                        currentPage++;
+                        queueRenderPage(currentPage);
+                    }}
+
+                    function loadPdf(typedArray) {{
+                        loadingEl.style.display = 'block';
+                        pdfjsLib.getDocument(typedArray).promise.then(function(pdf) {{
+                            loadingEl.style.display = 'none';
+                            pdfDoc = pdf;
+                            totalPagesEl.textContent = pdfDoc.numPages;
+                            currentPage = 1;
+                            renderPage(currentPage);
+                            prevButton.disabled = currentPage <= 1;
+                            nextButton.disabled = currentPage >= pdfDoc.numPages;
+                        }}).catch(function(error) {{
+                            loadingEl.style.display = 'none';
+                            console.error('Error loading PDF:', error);
+                            document.getElementById('error-message').textContent = 'Error loading PDF: ' + error.message;
+                            document.getElementById('error-container').style.display = 'block';
+                        }});
+                    }}
+
+                    // Event listener for file selector
+                    const fileSelector = document.getElementById('file-selector');
+                    fileSelector.addEventListener('change', function(event) {{
+                        document.getElementById('error-container').style.display = 'none';
+                        const file = event.target.files[0];
+                        if (!file || file.type !== 'application/pdf') {{
+                            document.getElementById('error-message').textContent = 'Please select a PDF file.';
+                            document.getElementById('error-container').style.display = 'block';
+                            fileNameDisplay.innerHTML = '<span style="font-style: italic;">No file chosen</span>';
+                            return;
+                        }}
+
+                        // Update file name display
+                        fileNameDisplay.innerHTML = '<span style="font-weight: 500; color: #1f2937;">' + file.name + '</span>';
+
+                        const fileReader = new FileReader();
+                        loadingEl.style.display = 'block';
+                        fileReader.onload = function() {{
+                            const typedArray = new Uint8Array(this.result);
+                            loadPdf(typedArray);
+                        }};
+                        fileReader.onerror = function() {{
+                            loadingEl.style.display = 'none';
+                            document.getElementById('error-message').textContent = 'Error reading file.';
+                            document.getElementById('error-container').style.display = 'block';
+                        }};
+                        fileReader.readAsArrayBuffer(file);
+                    }});
+
+                    // Automatically load file if source is provided
+                    {auto_load_script}
+
+                    prevButton.addEventListener('click', onPrevPage);
+                    nextButton.addEventListener('click', onNextPage);
+
+                    document.addEventListener('keydown', function(event) {{
+                        if (event.key === 'ArrowLeft') {{
+                            onPrevPage();
+                        }} else if (event.key === 'ArrowRight') {{
+                            onNextPage();
+                        }}
+                    }});
+                    
+                    // Add keydown navigation
+                    document.addEventListener('keydown', function(event) {{
+                        if (event.key === 'ArrowLeft') {{
+                            onPrevPage();
+                        }} else if (event.key === 'ArrowRight') {{
+                            onNextPage();
+                        }}
+                    }});
+                    
+                    // Add spin animation for loading
+                    const style = document.createElement('style');
+                    style.textContent = `
+                        @keyframes spin {{
+                            0% {{ transform: rotate(0deg); }}
+                            100% {{ transform: rotate(360deg); }}
+                        }}
+                    `;
+                    document.head.appendChild(style);
+                }}
+            </script>"""
+
+        return js_content
+
+    @staticmethod
+    def _create_auto_load_script(file_b64: str, filename: str, file_type: str) -> str:
+        """
+        Create a JavaScript script to automatically load a PDF file into the PDF viewer.
+        
+        Args:
+            file_b64: Base64-encoded PDF data
+            filename: Name of the PDF file
+            file_type: MIME type of the PDF file
+            
+        Returns:
+            str: JavaScript script to automatically load the PDF file
+        """
+        script = f"""
+                        // Create file from downloaded data
+                        try {{
+                            // Convert base64 to Blob
+                            const binaryString = atob("{file_b64}");
+                            const bytes = new Uint8Array(binaryString.length);
+                            for (let i = 0; i < binaryString.length; i++) {{
+                                bytes[i] = binaryString.charCodeAt(i);
+                            }}
+                            
+                            // Create a File object
+                            const fileData = new Blob([bytes], {{type: "{file_type}"}});
+                            const file = new File([fileData], "{filename}", {{type: "{file_type}"}});
+                            
+                            // Create a DataTransfer to set up the file input
+                            const dataTransfer = new DataTransfer();
+                            dataTransfer.items.add(file);
+                            
+                            // Set the file to the input element
+                            const fileInput = document.getElementById('file-selector');
+                            fileInput.files = dataTransfer.files;
+                            
+                            // Update file name display - using the Python variable directly
+                            document.getElementById('fileNameDisplay').innerHTML = '<span class="font-medium">{filename}</span>';
+                            
+                            // Trigger the change event
+                            const event = new Event('change', {{ bubbles: true }});
+                            fileInput.dispatchEvent(event);
+                        }} catch (error) {{
+                            console.error('Error processing file:', error);
+                            document.getElementById('error-message').textContent = 'Error processing downloaded file: ' + error.message;
+                            document.getElementById('error-container').style.display = 'block';
+                        }}
+                        """
+        return script
+
+
 class Printer:
     """
     Main class for displaying text, tables, and DataFrames with stylized HTML.
@@ -3692,6 +4482,7 @@ class Printer:
             self.mermaid_displayer = MermaidDisplayer(self.styles)
             self.button_displayer = ButtonDisplayer(self.styles)
             self.md_displayer = MDDisplayer(self.styles)
+            self.pdf_displayer = PDFDisplayer(self.styles)
         except Exception as e:
             raise ColabPrintError(f"Error initializing Printer: {str(e)}")
 
@@ -4519,3 +5310,32 @@ class Printer:
             IPythonNotAvailableError: If IPython environment is not detected
         """
         self.button_displayer.enable_button(button_id, enabled)
+
+    def display_pdf(self, source: Optional[str] = None, *,
+                    style: str = "default",
+                    is_url: bool = False,
+                    animate: Optional[str] = None,
+                    **inline_styles) -> None:
+        """
+        Display a PDF with interactive viewer.
+        
+        Args:
+            source: Path to PDF file, URL to PDF, or None for file picker
+            style: Style name from available styles
+            is_url: Whether the source is a URL
+            animate: Optional animation effect
+            **inline_styles: Additional CSS styles to apply
+            
+        Raises:
+            IPythonNotAvailableError: If IPython display capabilities are not available
+            PDFSourceError: If there's an error accessing the PDF file
+            PDFDownloadError: If downloading a PDF from URL fails
+            PDFRenderingError: If rendering the PDF fails
+        """
+        self.pdf_displayer.display(
+            source=source,
+            style=style,
+            is_url=is_url,
+            animate=animate,
+            **inline_styles
+        )
