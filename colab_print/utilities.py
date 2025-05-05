@@ -152,6 +152,7 @@ DEFAULT_THEMES = {
     'code': 'color: #2E86C1; font-size: 14px; font-family: Arial, sans-serif; background-color: rgba(46, 134, 193, 0.07); padding: 2px 6px; border-radius: 3px; border: 1px solid rgba(46, 134, 193, 0.2); letter-spacing: 0.2px;',
     'primary': 'color: #3498DB; font-size: 16px; font-weight: 600; font-family: Arial, sans-serif; letter-spacing: 0.3px; background-color: rgba(52, 152, 219, 0.08); padding: 6px 10px; border-radius: 4px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);',
     'secondary': 'color: #9B59B6; font-size: 16px; font-weight: 600; font-family: Arial, sans-serif; letter-spacing: 0.3px; background-color: rgba(155, 89, 182, 0.08); padding: 6px 10px; border-radius: 4px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);',
+    'pdf': 'font-family: "Inter", sans-serif; color: #333333; font-size: 16px; padding: 0; margin: 0; border-radius: 8px; container_style: background-color: #f8f9fa; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);',
 }
 
 # Define specialized style variables for easy access
@@ -207,6 +208,8 @@ SPECIAL_STYLES = {
     'progress': 'color: #2C3E50; font-size: 14px; font-weight: 500; font-family: "Segoe UI", Roboto, sans-serif; background: linear-gradient(to right, #f7f9fc, #edf2f7); padding: 18px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.04), 0 0 1px rgba(0,0,0,0.1); margin: 24px 0; border: none; display: block; clear: both;',
 
     'interactive_button': 'background-color: #3498db; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 8px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 6px rgba(0,0,0,0.1); position: relative; outline: none;',
+
+    'pdf': 'container_style: font-family: "Inter", sans-serif; width: 100%; max-width: 800px; margin: 20px auto; padding: 20px; background-color: #f8f9fa; border-radius: 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); display: block; clear: both;',
 }
 
 

@@ -13,6 +13,8 @@ The functions are organized into several categories:
 - Visual elements: mermaid() for diagrams, code() for syntax highlighting
 - Interactive elements: button() with callback functionality
 - Progress tracking: progress() with tqdm-compatible interface
+- Documentation: md() for markdown display
+- File viewing: pdf_() for interactive PDF display
 
 These functions simplify common display tasks and provide a clean, functional interface
 to the library's rich display capabilities.
@@ -64,7 +66,7 @@ __all__ = [
     "code", "card", "quote", "badge", "data_highlight", "footer",
     "highlight", "info", "success", "warning", "error", "muted",
     "primary", "secondary", "dfd", "table", "list_", "dict_",
-    "progress", "mermaid", "md", "button"
+    "progress", "mermaid", "md", "button", "pdf_"
 ]
 
 
@@ -626,5 +628,52 @@ def button(text: str, *,
         enabled=enabled,
         animate=animate,
         position=position,
+        **inline_styles
+    )
+
+
+def pdf_(source: Optional[str] = None, *,
+         is_url: bool = False,
+         style: str = "default",
+         animate: Optional[str] = None,
+         **inline_styles) -> None:
+    """
+    Display an interactive PDF viewer in Jupyter/Colab notebook.
+    
+    This function provides an interactive PDF viewer with page navigation controls.
+    It can display PDFs from local files, URLs, or via a file picker interface.
+    
+    Args:
+        source: Path to PDF file, URL to PDF, or None to show file picker
+        is_url: Set to True if source is a URL, False if it's a local file path
+        style: Named style from available styles
+        animate: Animation effect from Animate.css (e.g., 'fadeIn', 'bounceOut')
+        **inline_styles: Additional CSS styles to apply to the container
+        
+    Examples:
+        >>> # Display with file picker
+        >>> pdf_()
+        
+        >>> # Display from URL
+        >>> pdf_("https://example.com/document.pdf", is_url=True)
+        
+        >>> # Display from local file
+        >>> pdf_("documents/report.pdf")
+        
+        >>> # With custom styling
+        >>> pdf_("documents/report.pdf", style="card", 
+        ...       animate="fadeIn", width="100%", height="800px")
+    
+    Note:
+        - Navigation controls include Previous/Next buttons and keyboard arrow keys
+        - File picker allows users to select a different PDF at any time
+        - For URLs, the file is downloaded to a temporary location first
+        - PDF.js library is used for rendering PDFs in the browser
+    """
+    P.display_pdf(
+        source=source,
+        is_url=is_url,
+        style=style,
+        animate=animate,
         **inline_styles
     )
