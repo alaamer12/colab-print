@@ -17,3 +17,4 @@
 .pypi-token
 .idea/*
 roadmap.txt
+/.cursor/*

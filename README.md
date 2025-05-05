@@ -16,6 +16,7 @@
   - [Status Feedback](#status-feedback)
   - [Data Visualization](#data-visualization)
   - [Interactive Elements](#interactive-elements)
+  - [PDF Display](#pdf-display)
 - [Styling Options](#styling-options)
 - [Advanced Usage](#advanced-usage)
 - [Exception Handling](#exception-handling)
@@ -40,6 +41,7 @@
 - ✨ **Animation Effects** - Apply beautiful animations to any displayed element
 - 📊 **Mermaid Diagrams** - Render Mermaid.js diagrams with customizable styling
 - 📝 **Markdown Rendering** - Display Markdown content from strings, files, or URLs
+- 📄 **PDF Display** - Render PDF files with interactive viewer, page navigation, and file picker
 
 <a id="installation"></a>
 ## Installation
@@ -52,7 +54,7 @@ pip install colab-print
 ## Quick Start
 
 ```python
-from colab_print import Printer, header, success, progress, button
+from colab_print import Printer, header, success, progress, button, pdf_
 import pandas as pd
 import time
 
@@ -108,6 +110,9 @@ printer.display_df(df,
                   highlight_cols=['Name'],
                   highlight_cells={(0, 'Age'): "background-color: #FFEB3B;"},
                   caption="Sample DataFrame")
+
+# Display a PDF file
+pdf_("path/to/document.pdf", animate="fadeIn")
 ```
 
 <a id="display-functions"></a>
@@ -271,6 +276,42 @@ P.enable_button(btn_id, False)  # Disable button
 for i in progress(range(10), desc="Processing", color="#9C27B0"):
     time.sleep(0.2)  # Simulate work
 ```
+
+<a id="pdf-display"></a>
+### PDF Display
+
+| Function                                                        | Description                    | Example                                  |
+|-----------------------------------------------------------------|--------------------------------|------------------------------------------|
+| <a id="pdf-func"></a>`pdf_(source, *, is_url=False, **options)` | Display interactive PDF viewer | `pdf_("document.pdf", animate="fadeIn")` |
+
+```python
+from colab_print import pdf_, P
+
+# Display PDF from local file
+pdf_("path/to/document.pdf")
+
+# Display PDF from URL
+pdf_("https://example.com/sample.pdf", is_url=True)
+
+# PDF with animation and styling
+pdf_("path/to/document.pdf", 
+     animate="fadeIn", 
+     background_color="#f5f5f5",
+     border_radius="10px")
+
+# Use file picker (no source)
+pdf_()
+
+# Using the Printer class
+P.display_pdf("path/to/document.pdf")
+```
+
+The PDF viewer includes:
+- Interactive page navigation with previous/next buttons
+- Keyboard navigation (arrow keys)
+- File picker interface when no source is provided
+- Support for local files and URLs
+- Responsive design and customizable styling
 
 <a id="styling-options"></a>
 ## Styling Options
@@ -479,6 +520,7 @@ printer.enable_button(button_id, enabled)
 # Visualization
 printer.display_mermaid(diagram, theme="default", style="default", **options)
 printer.display_md(source, is_url=False, style="default", animate=None, **options)
+printer.display_pdf(source, is_url=False, style="default", animate=None, **options)
 
 # Styling methods
 printer.add_style(style_name, style_definition)
@@ -497,7 +539,8 @@ from colab_print.exception import (
     DataFrameError,         # DataFrame-related issues
     InvalidParameterError,  # Parameter validation failures
     HTMLRenderingError,     # HTML rendering problems
-    ButtonError             # Button-related issues
+    ButtonError,            # Button-related issues
+    PDFError,               # PDF-related issues
     # ...                   # Import More As Needed
 )
 

@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0b0] - 2025-05-25
+
+### Added
+- New PDF display functionality with interactive viewer capabilities
+  - Support for displaying PDF files from local paths with `pdf_("/path/to/file.pdf")`
+  - Support for displaying PDF files from URLs with `pdf_("https://example.com/doc.pdf", is_url=True)`
+  - Interactive page navigation with previous/next buttons
+  - Keyboard navigation support (arrow keys for page turning)
+  - Built-in file picker interface when no source is provided (`pdf_()`)
+  - Responsive design for various screen sizes
+  - Animation support via Animate.css integration
+- Added convenience `pdf_()` function for quick access to PDF display
+- Added PDFDisplayer methods to the Printer class API:
+  - `display_pdf(source, is_url=False, style="default", animate=None, **options)`
+- New PDF-specific exception class: `PDFError` for robust error handling
+
+### Improved
+- Enhanced error handling for PDF file loading and rendering
+- Better documentation with comprehensive examples for PDF viewer usage
+- Improved browser compatibility for PDF display
+
+### Notes
+- This is a beta release focused on PDF display functionality
+- PDF rendering is handled directly in the browser using native capabilities
+- Detailed examples available in the example.py file
+
 ## [0.5.0b0] - 2025-05-15
 
 ### Added
