@@ -1,6 +1,6 @@
 [project]
 name = "colab-print"
-version = "0.5.0b0"
+version = "0.6.0b0"
 description = "Enhanced display utilities for Jupyter/Colab notebooks with customizable styles"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -41,7 +41,17 @@ keywords = ["jupyter",
                 "buttons",
                 "callbacks",
                 "event-handling",
-            ]
+                "graceful-fallbacks",
+                "styling",
+                "customization",
+                "custom-styles",
+                "pdf",
+                "blob",
+                "base64",
+                "dataframe",
+                "dataframe-display",
+                "dataframe-styles",
+                ]
 authors = [
     { name = "alaamer12", email = "ahmedmuhmmed239@gmail.com" }
 ]
@@ -84,6 +94,8 @@ include = [
     "/README.md",
     "/LICENSE",
     "/example.py",
+#    "/requirements.txt",
+    "CHANGELOG.md",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -91,27 +103,8 @@ include = [
     "/colab_print",
     "/README.md",
     "/LICENSE",
+    "/example.py",
+#    "/requirements.txt",
+    "CHANGELOG.md",
 ]
 packages = ["colab_print"]
-
-[tool.black]
-line-length = 100
-target-version = ["py38", "py39", "py310", "py311"]
-
-[tool.isort]
-profile = "black"
-line_length = 100
-
-[tool.ruff]
-line-length = 100
-target-version = "py38"
-select = ["E", "F", "W", "I", "N", "UP", "S", "B", "A"]
-ignore = ["E203", "E501"]
-
-[tool.mypy]
-python_version = "3.8"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = true
-disallow_incomplete_defs = true
-

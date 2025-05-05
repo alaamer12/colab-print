@@ -16,7 +16,7 @@ from colab_print import (
     Printer, header, title, subtitle, section_divider, subheader,
     code, card, quote, badge, data_highlight, footer,
     highlight, info, success, warning, error, muted, primary, secondary,
-    dfd, table, list_, dict_, progress, mermaid, md
+    dfd, table, list_, dict_, progress, mermaid, md, button, pdf_
 )
 
 P = Printer()
@@ -1125,40 +1125,86 @@ def demo_table_display():
     demo_compact_parameter()
 
 
+def pdf_examples():
+    """Demo using the PDF display functionality."""
+
+    print("\n=== DEMO: PDF Display Functionality ===")
+
+    section_divider("PDF Display Examples")
+
+    # Basic PDF display
+    header("Basic PDF Display")
+    info("Display a PDF file from a local path")
+
+    # NOTE: In a real environment, replace with an actual PDF file path
+    pdf_("path/to/sample.pdf")
+
+    # PDF from URL
+    header("PDF from URL")
+    info("Display a PDF file from a URL")
+
+    # Example with a sample PDF URL
+    pdf_("https://www.africau.edu/images/default/sample.pdf", is_url=True)
+
+    # PDF with styling
+    header("Styled PDF Display")
+    info("Display PDF with custom styling and animation")
+
+    pdf_("path/to/sample.pdf",
+         animate="fadeIn",
+         background_color="#f5f5f5",
+         border_radius="10px",
+         box_shadow="0 4px 8px rgba(0,0,0,0.2)")
+
+    # Using the Printer class
+    header("Using Printer Class for PDF Display")
+    info("Display PDF using the Printer class API")
+
+    P.display_pdf("path/to/sample.pdf",
+                  animate="zoomIn",
+                  border="1px solid #e0e0e0")
+
+    # PDF file picker (no source provided)
+    header("PDF File Picker")
+    info("When no source is provided, a file picker interface is displayed")
+
+    pdf_()
+
+
 def main():
-    """Main function to run the examples."""
+    """Run all the example demos."""
+    title("Colab Print Library Demo", animate="fadeIn")
 
-    print("===== COLAB PRINT LIBRARY DEMO =====")
+    divider("Printer Class Demo")
+    demo_printer_class()
 
-    # Uncomment to run the original Printer class demo
-    # demo_printer_class()
-
-    # Demo the new global shortcut functions
+    divider("Global Shortcuts Demo")
     demo_global_shortcuts()
 
-    # Demo the enhanced table display
-    demo_table_display()
-
-    # Demo the enhanced code display features
-    demo_enhanced_code_display()
-
-    # Demo the enhanced list display features
-    demo_enhanced_lists()
-
-    # Demo the animation features
-    demo_animation()
-
-    # Demo the progress bar feature
+    divider("Progress Bars Demo")
     demo_progress_bars()
 
-    # Demo the mermaid diagram feature
+    divider("Enhanced Lists Demo")
+    demo_enhanced_lists()
+
+    divider("Animation Demo")
+    demo_animation()
+
+    divider("Mermaid Diagrams Demo")
     demo_mermaid_diagrams()
     display_mermaid_2()
 
-    # Demo the markdown display feature
+    divider("Markdown Display Demo")
     demo_md()
 
-    print("\n===== END OF DEMO =====")
+    divider("PDF Display Demo")
+    pdf_examples()
+
+    divider("Enhanced Code Display Demo")
+    demo_enhanced_code_display()
+
+    divider("Table Display Demo")
+    demo_table_display()
 
 
 if __name__ == "__main__":

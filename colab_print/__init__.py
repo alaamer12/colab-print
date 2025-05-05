@@ -66,7 +66,7 @@ from colab_print.functions import (code, dfd, card, info, badge, dict_, error,
                                    list_, muted, quote, table, title, header,
                                    footer, mermaid, primary, success, warning,
                                    progress, data_highlight, secondary, section_divider,
-                                   highlight, subheader, subtitle, button, md)
+                                   highlight, subheader, subtitle, button, md, pdf_)
 
 from colab_print.utilities import (DEFAULT_THEMES, SPECIAL_STYLES, VALID_ANIMATIONS,
                                    process_animation_class, is_in_notebook,
@@ -74,7 +74,7 @@ from colab_print.utilities import (DEFAULT_THEMES, SPECIAL_STYLES, VALID_ANIMATI
 
 P = Printer()
 
-__version__ = "0.5.0b0"
+__version__ = "0.6.0b0"
 __author__ = "alaamer12"
 __email__ = "ahmedmuhmmed239@gmail.com"
 __license__ = "MIT"
@@ -114,6 +114,16 @@ __keywords__ = ["jupyter",
                 "buttons",
                 "callbacks",
                 "event-handling",
+                "graceful-fallbacks",
+                "styling",
+                "customization",
+                "custom-styles",
+                "pdf",
+                "blob",
+                "base64",
+                "dataframe",
+                "dataframe-display",
+                "dataframe-styles",
                 ]
 __description__ = "Enhanced display utilities for Jupyter/Colab notebooks."
 __url__ = "https://github.com/alaamer12/colab-print"
@@ -129,7 +139,7 @@ __all__ = [
     "list_", "muted", "quote", "table", "title", "header",
     "footer", "mermaid", "primary", "success", "warning",
     "progress", "data_highlight", "secondary", "section_divider",
-    "highlight", "subheader", "subtitle", "button", "md",
+    "highlight", "subheader", "subtitle", "button", "md", "pdf_",
 
     # Utilities
     "process_animation_class", "is_in_notebook",
