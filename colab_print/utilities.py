@@ -36,8 +36,16 @@ Example:
     ```
 """
 
+import html
+import os.path
+import re
 from dataclasses import dataclass
-from typing import Optional, Union, List, Dict
+from typing import Optional, Union, List, Dict, Literal
+
+import html2text
+import markdown
+import requests
+from bs4 import BeautifulSoup
 
 from colab_print.exception import AnimationError
 
@@ -499,3 +507,205 @@ def array_like(obj) -> bool:
     # print(f"Total: {total_present}/{total_items} (threshold: {threshold})")
 
     return total_present >= threshold
+
+
+def md_to_html(source, head=False, escape=False) -> str:
+    """
+    Convert markdown content to HTML.
+
+    Parameters:
+    - source (str): Can be a local file path, a markdown string, or a URL pointing to a markdown file
+    - head (bool): If True, includes DOCTYPE, html, head, and body tags. Default is False.
+    - escape (bool): If True, escapes HTML characters. Default is False.
+
+    Returns:
+    - str: HTML content
+    """
+    # Determine if source is a file path, URL, or markdown string
+    md_content = ""
+
+    if os.path.isfile(source):
+        # Source is a local file
+        with open(source, 'r', encoding='utf-8') as file:
+            md_content = file.read()
+    elif source.startswith(('http://', 'https://')):
+        # Source is a URL
+        response = requests.get(source)
+        response.raise_for_status()  # Raise an exception for HTTP errors
+        md_content = response.text
+    else:
+        # Source is a markdown string
+        md_content = source
+
+    # Convert markdown to HTML
+    html_content = markdown.markdown(md_content, extensions=['tables', 'fenced_code'])
+
+    # Escape HTML characters if requested
+    if escape:
+        html_content = html.escape(html_content)
+
+    # Add HTML structure if requested
+    if head:
+        html_content = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown Converted to HTML</title>
+</head>
+<body>
+{html_content}
+</body>
+</html>"""
+
+    return html_content
+
+
+def html_to_md(source: str, clean_level: Literal["light", "moderate", "aggressive"] = 'moderate', remove_comments: bool = True, base_url: bool = None):
+    """
+    Convert HTML content to Markdown with HTML purification.
+
+    Parameters:
+    - source (str): Can be a local file path, an HTML string, or a URL pointing to an HTML file
+    - clean_level (Literal["light", "moderate", "aggressive"]): Level of HTML cleaning/purification: 'light', 'moderate', or 'aggressive'
+    - remove_comments (bool): Whether to remove HTML comments
+    - base_url (str): Base URL for resolving relative links (useful for URL sources)
+
+    Returns:
+    - str: Markdown content
+    """
+    # Determine if source is a file path, URL, or HTML string
+    html_content = ""
+
+    if os.path.isfile(source):
+        # Source is a local file
+        with open(source, 'r', encoding='utf-8') as file:
+            html_content = file.read()
+    elif source.startswith(('http://', 'https://')):
+        # Source is a URL
+        response = requests.get(source)
+        response.raise_for_status()  # Raise an exception for HTTP errors
+        html_content = response.text
+        # Use the URL as base_url if not provided
+        if base_url is None:
+            from urllib.parse import urlparse
+            parsed_url = urlparse(source)
+            base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
+    else:
+        # Source is an HTML string
+        html_content = source
+
+    # Clean/purify HTML based on the specified level
+    cleaned_html = clean_html(html_content, clean_level, remove_comments)
+
+    # Convert HTML to Markdown
+    h2t = html2text.HTML2Text()
+    h2t.ignore_links = False
+    h2t.ignore_images = False
+    h2t.ignore_tables = False
+    h2t.body_width = 0  # Don't wrap text
+    h2t.protect_links = True  # Don't wrap links
+
+    # Set base URL for resolving relative links if provided
+    if base_url:
+        h2t.baseurl = base_url
+
+    # Convert to markdown
+    markdown_content = h2t.handle(cleaned_html)
+
+    # Post-process markdown for cleaner output
+    markdown_content = _post_process_markdown(markdown_content)
+
+    return markdown_content
+
+
+def clean_html(html_content: str, clean_level: Literal["light", "moderate", "aggressive"] = 'moderate', remove_comments: bool = True):
+    """
+    Clean and purify HTML content.
+
+    Parameters:
+    - html_content (str): HTML content to clean
+    - clean_level (Literal["light", "moderate", "aggressive"]): Level of cleaning/purification
+    - remove_comments (bool): Whether to remove HTML comments
+
+    Returns:
+    - str: Cleaned HTML content
+    """
+    # Initialize BeautifulSoup for HTML parsing and cleaning
+    soup = BeautifulSoup(html_content, 'html.parser')
+
+    # Remove HTML comments if requested
+    if remove_comments:
+        for comment in soup.find_all(string=lambda text: isinstance(text, str) and '<!--' in text):
+            comment.extract()
+
+    # Apply different levels of cleaning
+    if clean_level == 'light':
+        # Light cleaning: remove script and style tags
+        for tag in soup(['script', 'style']):
+            tag.decompose()
+
+    elif clean_level == 'moderate':
+        # Moderate cleaning: remove script, style, iframe, and other potentially problematic tags
+        for tag in soup(['script', 'style', 'iframe', 'noscript', 'object', 'embed']):
+            tag.decompose()
+
+        # Remove event handlers from all tags
+        for tag in soup.find_all(True):
+            for attr in list(tag.attrs):
+                if attr.startswith('on') or attr == 'javascript:':
+                    del tag.attrs[attr]
+
+    elif clean_level == 'aggressive':
+        # Aggressive cleaning: keep only basic semantic HTML tags
+        allowed_tags = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'a', 'ul', 'ol', 'li',
+                        'strong', 'em', 'b', 'i', 'code', 'pre', 'blockquote', 'table',
+                        'tr', 'td', 'th', 'thead', 'tbody', 'img', 'br', 'hr', 'div', 'span']
+
+        # Create a new soup with only allowed tags
+        new_soup = BeautifulSoup('', 'html.parser')
+        body = new_soup.new_tag('body')
+        new_soup.append(body)
+
+        for tag in soup.find_all(allowed_tags):
+            # Clean attributes
+            for attr in list(tag.attrs):
+                if attr not in ['href', 'src', 'alt', 'title']:
+                    del tag.attrs[attr]
+
+            # Add the clean tag to the new soup
+            body.append(tag)
+
+        soup = new_soup
+
+    return str(soup)
+
+
+def _post_process_markdown(markdown_content: str) -> str:
+    """
+    Post-process markdown content for cleaner output.
+
+    Parameters:
+    - markdown_content (str): Raw markdown content
+
+    Returns:
+    - str: Cleaned markdown content
+    """
+    # Fix excessive line breaks
+    markdown_content = re.sub(r'\n{3,}', '\n\n', markdown_content)
+
+    # Fix spacing around headers
+    markdown_content = re.sub(r'(?<!\n)\n#', '\n\n#', markdown_content)
+
+    # Fix list item formatting
+    markdown_content = re.sub(r'\n\* ', '\n* ', markdown_content)
+    markdown_content = re.sub(r'\n\d+\. ', '\n1. ', markdown_content)
+
+    # Fix code block formatting
+    markdown_content = re.sub(r'```\n\n', '```\n', markdown_content)
+    markdown_content = re.sub(r'\n\n```', '\n```', markdown_content)
+
+    # Remove trailing whitespace
+    markdown_content = re.sub(r' +\n', '\n', markdown_content)
+
+    return markdown_content
