@@ -23,6 +23,7 @@ Classes:
     MDDisplayer: For rendering Markdown content
     ProgressDisplayer: For creating and updating progress bars
     ButtonDisplayer: For creating interactive buttons with callbacks
+    PDFDisplayer: For rendering PDF files
     Printer: Main class that orchestrates all displayers and exposes API
 
 Example:
@@ -60,6 +61,11 @@ import uuid
 import warnings
 from collections.abc import Iterable, Mapping
 from typing import Callable, Optional, Union, Dict, List, Any, Tuple, Literal
+import base64
+import mimetypes
+import urllib.request
+import tempfile
+import hashlib
 
 import pandas as pd
 from IPython.display import display as ip_display, HTML, Javascript
@@ -117,13 +123,14 @@ class Displayer(abc.ABC):
         """
         try:
             corrected_styles = {k.replace('_', '-') if '_' in k else k: v for k, v in inline_styles.items()}
-            return "; ".join([f"{key}: {value}" for key, value in corrected_styles.items()])
         except Exception as e:
             raise ConversionError(
                 from_type="Dict[str, str]",
                 to_type="CSS string",
                 message=f"Failed to convert inline styles to CSS format: {str(e)}"
             )
+        else:
+            return "; ".join([f"{key}: {value}" for key, value in corrected_styles.items()])
 
     def _load_animate_css(self) -> str:
         """
@@ -251,6 +258,20 @@ class CodeDisplayer(Displayer):
             "#F1C40F",  # Yellow
             "#E74C3C",  # Red
             "#1ABC9C",  # Turquoise
+            "#FF5733",  # Coral
+            "#C70039",  # Crimson
+            "#900C3F",  # Maroon
+            "#581845",  # Plum
+            "#FFC300",  # Amber
+            "#DAF7A6",  # Light Green
+            "#FF5733",  # Orange
+            "#16A085",  # Sea Green
+            "#27AE60",  # Emerald
+            "#2980B9",  # Steel Blue
+            "#8E44AD",  # Violet
+            "#34495E",  # Dark Slate
+            "#D35400",  # Pumpkin
+            "#7D3C98"   # Dark Purple
         ]
 
     @staticmethod
@@ -394,7 +415,7 @@ class CodeDisplayer(Displayer):
             pre_style = f"font-family: monospace; padding: 15px; border-radius: 5px; {base_style}"
             html_lines.append(f'<pre style="{pre_style}">')
 
-            for i, line_info in enumerate(parsed_lines):
+            for _, line_info in enumerate(parsed_lines):
                 line_number = line_info['number']
                 text = html.escape(line_info['text'])
                 indentation = line_info['indentation']
@@ -433,9 +454,7 @@ class CodeDisplayer(Displayer):
                 style: str = 'code_block',
                 highlighting_mode: str = 'block',
                 background_color: Optional[str] = None,
-                prompt_style: Optional[str] = None,
-                animate: Optional[str] = None,
-                **inline_styles) -> None:
+                animate: Optional[str] = None,) -> None:
         """
         Display code with syntax highlighting.
         
@@ -444,9 +463,7 @@ class CodeDisplayer(Displayer):
             style: Named style from available styles
             highlighting_mode: 'block' for indentation-based, 'line' for line-by-line highlighting
             background_color: Custom background color for code block
-            prompt_style: Style for code prompts (>>>, ...) if present
             animate: Animation effect from Animate.css (e.g., 'fadeIn', 'bounceOut')
-            **inline_styles: Additional CSS styles to apply
             
         Raises:
             CodeError: If code is not a string or there's an issue with code parsing
@@ -737,7 +754,7 @@ class TableDisplayer(Displayer):
 
     def _process_styles(self, style: str, width: str, custom_header_style: Optional[str],
                         custom_row_style: Optional[str], inline_styles_dict: Dict[str, str]) -> Tuple[
-        str, str, str, str]:
+                        str, str, str, str]:
         """
         Process and prepare all styles for the table.
         
@@ -1694,8 +1711,8 @@ class ListDisplayer(Displayer):
         else:
             return str(item)
 
-    @staticmethod
-    def _is_array_like(obj: Any) -> bool:
+
+    def _is_array_like(self, obj: Any) -> bool:
         """
         Check if an object is array-like.
         
@@ -1705,45 +1722,67 @@ class ListDisplayer(Displayer):
         Returns:
             True if the object is array-like, False otherwise
         """
-        # Quick checks for common Python types
-        if isinstance(obj, (list, tuple)):
+        # Check common Python types first
+        if self._is_known_sequence_type(obj):
             return True
-
-        if isinstance(obj, (str, dict, bytes, bool, int, float)):
+            
+        if self._is_known_non_sequence_type(obj):
             return False
-
-        # Check common array library types by name
-        obj_type = str(type(obj))
-        if any(lib in obj_type for lib in ['numpy', 'pandas', 'torch', 'tensorflow', 'tf.', 'jax']):
+            
+        # Check for array library types
+        if self._is_array_library_type(obj):
             return True
-
-        # Check for common array-like interfaces
-        if hasattr(obj, '__iter__'):
-            # Try to access basic sequence operations
-            try:
-                # Check if object supports indexing
-                if hasattr(obj, '__getitem__'):
-                    return True
-
-                # Check if it has a length
-                len(obj)
-                return True
-            except (TypeError, AttributeError):
-                pass
-
-            # Check if it's a generator or iterator without len()
-            try:
-                # Just getting the iterator is enough to confirm it's iterable
-                iter(obj)
-                return True
-            except TypeError:
-                pass
-
+            
+        # Check for sequence-like interfaces
+        if self._has_sequence_interface(obj):
+            return True
+            
         # Check for array or buffer protocol
-        if hasattr(obj, '__array__') or hasattr(obj, 'buffer_info'):
+        if self._has_array_protocol(obj):
             return True
-
+            
         return False
+        
+    def _is_known_sequence_type(self, obj: Any) -> bool:
+        """Check if object is a known Python sequence type."""
+        return isinstance(obj, (list, tuple))
+        
+    def _is_known_non_sequence_type(self, obj: Any) -> bool:
+        """Check if object is a known non-sequence Python type."""
+        return isinstance(obj, (str, dict, bytes, bool, int, float))
+        
+    def _is_array_library_type(self, obj: Any) -> bool:
+        """Check if object is from a common array library."""
+        return any(lib in str(type(obj)) for lib in ['numpy', 'pandas', 'torch', 'tensorflow', 'tf.', 'jax'])
+
+    def _has_sequence_interface(self, obj: Any) -> bool:
+        """Check if object implements sequence-like interfaces."""
+        if not hasattr(obj, '__iter__'):
+            return False
+            
+        # Check for indexing support
+        if hasattr(obj, '__getitem__'):
+            return True
+            
+        # Check for length support
+        try:
+            len(obj)
+            return True
+        except (TypeError, AttributeError):
+            pass
+            
+        # Check if it's an iterator
+        try:
+            iter(obj)
+            return True
+        except TypeError:
+            pass
+            
+        return False
+        
+    def _has_array_protocol(self, obj: Any) -> bool:
+        """Check if object implements array or buffer protocols."""
+        return hasattr(obj, '__array__') or hasattr(obj, 'buffer_info')
 
     def _convert_to_list(self, obj: Any) -> List:
         """
@@ -1888,41 +1927,81 @@ class ListDisplayer(Displayer):
             StyleNotFoundError: If the specified style is not found
             MatrixDetectionError: If matrix processing fails
         """
+        if style not in self.styles:
+            raise StyleNotFoundError(style_name=style)
+            
         try:
-            if style not in self.styles:
-                raise StyleNotFoundError(style_name=style)
-
-            style_base = self.styles.get(style)
-            matrix_style = f"{style_base}; border-collapse: collapse; margin: 10px 0;"
-            cell_style = "border: 1px solid #ddd; padding: 6px 10px; text-align: center;"
-
-            html = [f'<table style="{matrix_style}">']
-
-            for row in matrix:
-                html.append('<tr>')
-                for cell in row:
-                    if isinstance(cell, (list, tuple)) or self._is_array_like(cell):
-                        # Handle nested structures within matrix cells
-                        cell_content = self._generate_list_html(
-                            cell, False, style, None, nesting_level=1, **inline_styles
-                        )
-                    elif isinstance(cell, dict):
-                        # Handle dictionaries within matrix cells
-                        cell_content = self._generate_dict_html(cell, 1)
-                    else:
-                        cell_content = str(cell)
-
-                    html.append(f'<td style="{cell_style}">{cell_content}</td>')
-
-                html.append('</tr>')
-
-            html.append('</table>')
-            return ''.join(html)
-
+            return self._build_matrix_html(matrix, style, **inline_styles)
         except StyleNotFoundError:
             raise
         except Exception as e:
             raise MatrixDetectionError(f"Failed to generate HTML for matrix: {str(e)}")
+    
+    def _build_matrix_html(self, matrix: List[List], style: str, **inline_styles) -> str:
+        """
+        Build the HTML table structure for a matrix.
+        
+        Args:
+            matrix: 2D list/array to display as a matrix
+            style: Base style name
+            **inline_styles: Additional inline styles
+            
+        Returns:
+            HTML string for the matrix
+        """
+        style_base = self.styles.get(style)
+        matrix_style = f"{style_base}; border-collapse: collapse; margin: 10px 0;"
+        cell_style = "border: 1px solid #ddd; padding: 6px 10px; text-align: center;"
+        
+        html = [f'<table style="{matrix_style}">']
+        
+        for row in matrix:
+            html.append('<tr>')
+            html.extend(self._generate_matrix_row_cells(row, cell_style, style, **inline_styles))
+            html.append('</tr>')
+            
+        html.append('</table>')
+        return ''.join(html)
+    
+    def _generate_matrix_row_cells(self, row: List, cell_style: str, style: str, **inline_styles) -> List[str]:
+        """
+        Generate HTML for cells in a matrix row.
+        
+        Args:
+            row: List of cell values in a matrix row
+            cell_style: CSS style for the cell
+            style: Base style name
+            **inline_styles: Additional inline styles
+            
+        Returns:
+            List of HTML strings for each cell
+        """
+        cells = []
+        for cell in row:
+            cell_content = self._format_cell_content(cell, style, **inline_styles)
+            cells.append(f'<td style="{cell_style}">{cell_content}</td>')
+        return cells
+    
+    def _format_cell_content(self, cell: Any, style: str, **inline_styles) -> str:
+        """
+        Format the content of a matrix cell based on its type.
+        
+        Args:
+            cell: Cell value to format
+            style: Base style name
+            **inline_styles: Additional inline styles
+            
+        Returns:
+            Formatted HTML string for the cell content
+        """
+        if isinstance(cell, (list, tuple)) or self._is_array_like(cell):
+            return self._generate_list_html(
+                cell, False, style, None, nesting_level=1, **inline_styles
+            )
+        elif isinstance(cell, dict):
+            return self._generate_dict_html(cell, 1)
+        else:
+            return str(cell)
 
     def _generate_dict_html(self, data: Dict, nesting_level: int) -> str:
         """
@@ -1939,40 +2018,65 @@ class ListDisplayer(Displayer):
             DictError: If dictionary processing fails
             ColorError: If color processing fails
         """
+        if not isinstance(data, dict):
+            raise DictError(f"Expected dictionary, received {type(data).__name__}")
+            
         try:
-            if not isinstance(data, dict):
-                raise DictError(f"Expected dictionary, received {type(data).__name__}")
-
-            # Simple but nicer dictionary representation than just str(dict)
-            color_idx = min(nesting_level, len(self.nesting_colors) - 1)
-            nesting_color = self.nesting_colors[color_idx]
-            bg_color = self._lighten_color(nesting_color, 0.9)  # Very light background based on nesting color
-
-            html = [
-                f'<div style="background-color: {bg_color}; padding: 6px; border-radius: 4px; border-left: 2px solid {nesting_color}; margin: 4px 0;">']
-
-            for key, value in data.items():
-                key_style = f"font-weight: bold; color: {nesting_color};"
-                html.append(f'<div><span style="{key_style}">{key}</span>: ')
-
-                if isinstance(value, (list, tuple)) or self._is_array_like(value):
-                    html.append(self._generate_list_html(
-                        value, False, "default", None, nesting_level=nesting_level + 1
-                    ))
-                elif isinstance(value, dict):
-                    html.append(self._generate_dict_html(value, nesting_level + 1))
-                else:
-                    html.append(str(value))
-
-                html.append('</div>')
-
-            html.append('</div>')
-            return ''.join(html)
-
+            return self._render_dict_as_html(data, nesting_level)
         except ColorError:
+            # Pass through color errors directly
             raise
         except Exception as e:
             raise DictError(f"Failed to generate HTML for dictionary: {str(e)}")
+    
+    def _render_dict_as_html(self, data: Dict, nesting_level: int) -> str:
+        """
+        Render a dictionary as styled HTML.
+        
+        Args:
+            data: Dictionary to render
+            nesting_level: Current nesting level for styling
+            
+        Returns:
+            HTML string representation of the dictionary
+        """
+        # Get appropriate nesting color based on level
+        color_idx = min(nesting_level, len(self.nesting_colors) - 1)
+        nesting_color = self.nesting_colors[color_idx]
+        bg_color = self._lighten_color(nesting_color, 0.9)
+        
+        # Create container with styling
+        container_style = f"background-color: {bg_color}; padding: 6px; border-radius: 4px; " \
+                          f"border-left: 2px solid {nesting_color}; margin: 4px 0;"
+        html = [f'<div style="{container_style}">']
+        
+        # Process each key-value pair
+        for key, value in data.items():
+            key_style = f"font-weight: bold; color: {nesting_color};"
+            html.append(f'<div><span style="{key_style}">{key}</span>: {self._format_dict_value(value, nesting_level)}</div>')
+        
+        html.append('</div>')
+        return ''.join(html)
+    
+    def _format_dict_value(self, value: Any, nesting_level: int) -> str:
+        """
+        Format a dictionary value based on its type.
+        
+        Args:
+            value: The value to format
+            nesting_level: Current nesting level
+            
+        Returns:
+            HTML string for the formatted value
+        """
+        if isinstance(value, (list, tuple)) or self._is_array_like(value):
+            return self._generate_list_html(
+                value, False, "default", None, nesting_level=nesting_level + 1
+            )
+        elif isinstance(value, dict):
+            return self._generate_dict_html(value, nesting_level + 1)
+        else:
+            return str(value)
 
     @staticmethod
     def _lighten_color(color: str, factor: float = 0.5) -> str:
@@ -2182,36 +2286,74 @@ class DictDisplayer(Displayer):
         Returns:
             HTML string for the definition list
         """
+        # Get base container style
         dl_style = self.styles.get(style, self.styles['default'])
-        html = [f'<dl style="{dl_style}">']
-
+        
+        # Process inline styles
         inline_style_string = self._process_inline_styles(inline_styles)
-        final_key_style = key_style if key_style else "font-weight: bold;"
-        final_value_style = value_style if value_style else "margin-left: 20px;"
-
-        if inline_style_string:
-            final_key_style = f"{final_key_style}; {inline_style_string}".strip('; ')
-            final_value_style = f"{final_value_style}; {inline_style_string}".strip('; ')
-
+        
+        # Set default styles for keys and values if not provided
+        final_key_style = self._build_final_style(key_style or "font-weight: bold;", inline_style_string)
+        final_value_style = self._build_final_style(value_style or "margin-left: 20px;", inline_style_string)
+        
+        # Start building HTML
+        html_parts = [f'<dl style="{dl_style}">']
+        
+        # Process each key-value pair
         for key, value in data.items():
             key_content = str(key)
-            value_content = ""
-
-            if isinstance(value, dict):
-                # Recursively handle nested dictionaries
-                value_content = self._generate_dict_html_dl(value, style, key_style, value_style, **inline_styles)
-            elif isinstance(value, (list, tuple)):
-                # Delegate nested lists to ListDisplayer (if available)
-                # For simplicity here, we'll just convert to string
-                value_content = str(value)  # Placeholder - ideally use ListDisplayer
-            else:
-                value_content = str(value)
-
-            html.append(f'<dt style="{final_key_style}">{key_content}</dt>')
-            html.append(f'<dd style="{final_value_style}">{value_content}</dd>')
-
-        html.append('</dl>')
-        return ''.join(html)
+            value_content = self._format_value_content(value, style, key_style, value_style, **inline_styles)
+            
+            # Add the key-value pair to HTML
+            html_parts.append(f'<dt style="{final_key_style}">{key_content}</dt>')
+            html_parts.append(f'<dd style="{final_value_style}">{value_content}</dd>')
+        
+        # Close the definition list
+        html_parts.append('</dl>')
+        
+        return ''.join(html_parts)
+    
+    def _build_final_style(self, base_style: str, inline_style: str) -> str:
+        """
+        Combine base style with inline styles.
+        
+        Args:
+            base_style: The base style string
+            inline_style: Additional inline styles to apply
+            
+        Returns:
+            Combined style string
+        """
+        if not inline_style:
+            return base_style
+        return f"{base_style}; {inline_style}".strip('; ')
+    
+    def _format_value_content(self, value: Any, style: str, 
+                              key_style: Optional[str], value_style: Optional[str],
+                              **inline_styles) -> str:
+        """
+        Format the content of a value based on its type.
+        
+        Args:
+            value: The value to format
+            style: Base style name
+            key_style: Style for keys in nested dictionaries
+            value_style: Style for values in nested dictionaries
+            **inline_styles: Additional inline styles
+            
+        Returns:
+            Formatted HTML string for the value
+        """
+        if isinstance(value, dict):
+            # Recursively handle nested dictionaries
+            return self._generate_dict_html_dl(value, style, key_style, value_style, **inline_styles)
+        elif isinstance(value, (list, tuple)):
+            # For lists and tuples, convert to string for now
+            # TODO: Implement proper ListDisplayer integration
+            return str(value)
+        else:
+            # For simple values, convert to string
+            return str(value)
 
     def display(self, data: Dict, *, style: str = 'default',
                 key_style: Optional[str] = None,
@@ -2356,8 +2498,7 @@ class MermaidDisplayer(Displayer):
         # If not a file path, return the original string
         return diagram_input
 
-    @staticmethod
-    def _generate_mermaid_html(diagram: str, container_style: str, theme: str,
+    def _generate_mermaid_html(self, diagram: str, container_style: str, theme: str,
                                custom_css: Optional[Dict[str, str]] = None) -> str:
         """
         Generate HTML for displaying a Mermaid diagram.
@@ -2388,6 +2529,22 @@ class MermaidDisplayer(Displayer):
 
             custom_css_string = f"<style>{' '.join(css_rules)}</style>"
 
+        html = self._generate_html(diagram_id, container_style, custom_css_string, diagram, theme)
+        return html
+
+    def _generate_html(self, diagram_id: str, container_style: str, custom_css_string: str, diagram: str, theme: str) -> str:
+        """
+        Generate HTML for displaying a Mermaid diagram.
+        
+        Args:
+            diagram_id: ID for the diagram container
+            container_style: CSS style for the container
+            custom_css_string: Custom CSS for the diagram
+            diagram: The Mermaid diagram definition/code
+            
+        Returns:
+            HTML content string
+        """
         html = f"""
         <div style="{container_style}">
             {custom_css_string}
@@ -2840,8 +2997,7 @@ class ProgressDisplayer(Displayer):
 
         return progress_id
 
-    @staticmethod
-    def update(progress_id: str, value: int, total: Optional[int] = None) -> None:
+    def update(self, progress_id: str, value: int, total: Optional[int] = None) -> None:
         """
         Update the progress of a displayed progress bar.
         
@@ -2853,84 +3009,15 @@ class ProgressDisplayer(Displayer):
         Raises:
             DisplayUpdateError: If update fails
             IPythonNotAvailableError: If IPython environment is not detected
+            InvalidParameterError: If input parameters are invalid
         """
         # Validate inputs
-        if not isinstance(progress_id, str):
-            raise InvalidParameterError("progress_id", "string", received=type(progress_id).__name__)
-
-        if not isinstance(value, int):
-            raise InvalidParameterError("value", "integer", received=type(value).__name__)
-
-        if total is not None and not isinstance(total, int):
-            raise InvalidParameterError("total", "integer or None", received=type(total).__name__)
-
-        # Create JavaScript to update the progress
-        if total is not None:
-            if value >= total:  # Check if complete
-                # For completed progress, stop any animation and show 100%
-                js_code = f"""
-                (function() {{
-                    var progressBar = document.getElementById('{progress_id}');
-                    var container = document.getElementById('container_{progress_id}');
-                    if (progressBar) {{
-                        // Handle both determined and undetermined progress bars
-                        if (progressBar.tagName === 'PROGRESS') {{
-                            progressBar.max = {total};
-                            progressBar.value = {value};
-                            var label = document.getElementById('label_{progress_id}');
-                            if (label) {{
-                                label.textContent = '100%';
-                            }}
-                        }} else {{
-                            // This is an undetermined progress bar, replace with completed state
-                            progressBar.style.animation = 'none';
-                            progressBar.style.background = '#27AE60';  // Success green color
-                            var label = document.createElement('span');
-                            label.textContent = 'Complete';
-                            label.style.position = 'absolute';
-                            label.style.top = '50%';
-                            label.style.left = '50%';
-                            label.style.transform = 'translate(-50%, -50%)';
-                            label.style.color = 'white';
-                            label.style.fontWeight = 'bold';
-                            label.style.fontSize = '12px';
-                            progressBar.appendChild(label);
-                        }}
-                    }}
-                }})();
-                """
-            else:
-                # Regular update with new total
-                js_code = f"""
-                (function() {{
-                    var progressBar = document.getElementById('{progress_id}');
-                    if (progressBar) {{
-                        progressBar.max = {total};
-                        progressBar.value = {value};
-                        var percent = Math.round(({value} / {total}) * 100);
-                        var label = document.getElementById('label_{progress_id}');
-                        if (label) {{
-                            label.textContent = percent + '%';
-                        }}
-                    }}
-                }})();
-                """
-        else:
-            # Regular update without changing total
-            js_code = f"""
-            (function() {{
-                var progressBar = document.getElementById('{progress_id}');
-                if (progressBar) {{
-                    progressBar.value = {value};
-                    var percent = Math.round(({value} / progressBar.max) * 100);
-                    var label = document.getElementById('label_{progress_id}');
-                    if (label) {{
-                        label.textContent = percent + '%';
-                    }}
-                }}
-            }})();
-            """
-
+        self._validate_update_parameters(progress_id, value, total)
+        
+        # Generate JavaScript code for the update
+        js_code = self._generate_progress_update_js(progress_id, value, total)
+        
+        # Execute the JavaScript
         try:
             ip_display(Javascript(js_code))
         except NameError:
@@ -2942,6 +3029,122 @@ class ProgressDisplayer(Displayer):
                 element_id=progress_id,
                 message=f"Failed to update progress bar: {str(e)}"
             ) from e
+    
+    def _validate_update_parameters(self, progress_id: str, value: int, total: Optional[int]) -> None:
+        """
+        Validate parameters for progress bar update.
+        
+        Args:
+            progress_id: ID of the progress bar
+            value: Current progress value
+            total: Optional new total
+            
+        Raises:
+            InvalidParameterError: If any parameter is invalid
+        """
+        if not isinstance(progress_id, str):
+            raise InvalidParameterError("progress_id", "string", received=type(progress_id).__name__)
+
+        if not isinstance(value, int):
+            raise InvalidParameterError("value", "integer", received=type(value).__name__)
+
+        if total is not None and not isinstance(total, int):
+            raise InvalidParameterError("total", "integer or None", received=type(total).__name__)
+    
+    def _generate_progress_update_js(self, progress_id: str, value: int, total: Optional[int]) -> str:
+        """
+        Generate JavaScript code to update a progress bar.
+        
+        Args:
+            progress_id: ID of the progress bar
+            value: Current progress value
+            total: Optional new total
+            
+        Returns:
+            JavaScript code as string
+        """
+        container_id = f"container_{progress_id}"
+        label_id = f"label_{progress_id}"
+        
+        if total is not None and value >= total:
+            # For completed progress, stop animation and show 100%
+            return self._generate_completion_js(progress_id, label_id, total, value)
+        elif total is not None:
+            # Regular update with new total
+            return self._generate_update_with_new_total_js(progress_id, label_id, total, value)
+        else:
+            # Regular update without changing total
+            return self._generate_update_js(progress_id, label_id, value)
+    
+    @staticmethod
+    def _generate_completion_js(progress_id: str, label_id: str, total: int, value: int) -> str:
+        """Generate JavaScript for completed progress bar."""
+        return f"""
+        (function() {{
+            var progressBar = document.getElementById('{progress_id}');
+            var container = document.getElementById('container_{progress_id}');
+            if (progressBar) {{
+                // Handle both determined and undetermined progress bars
+                if (progressBar.tagName === 'PROGRESS') {{
+                    progressBar.max = {total};
+                    progressBar.value = {value};
+                    var label = document.getElementById('{label_id}');
+                    if (label) {{
+                        label.textContent = '100%';
+                    }}
+                }} else {{
+                    // This is an undetermined progress bar, replace with completed state
+                    progressBar.style.animation = 'none';
+                    progressBar.style.background = '#27AE60';  // Success green color
+                    var label = document.createElement('span');
+                    label.textContent = 'Complete';
+                    label.style.position = 'absolute';
+                    label.style.top = '50%';
+                    label.style.left = '50%';
+                    label.style.transform = 'translate(-50%, -50%)';
+                    label.style.color = 'white';
+                    label.style.fontWeight = 'bold';
+                    label.style.fontSize = '12px';
+                    progressBar.appendChild(label);
+                }}
+            }}
+        }})();
+        """
+    
+    @staticmethod
+    def _generate_update_with_new_total_js(progress_id: str, label_id: str, total: int, value: int) -> str:
+        """Generate JavaScript for updating progress with a new total."""
+        return f"""
+        (function() {{
+            var progressBar = document.getElementById('{progress_id}');
+            if (progressBar) {{
+                progressBar.max = {total};
+                progressBar.value = {value};
+                var percent = Math.round(({value} / {total}) * 100);
+                var label = document.getElementById('{label_id}');
+                if (label) {{
+                    label.textContent = percent + '%';
+                }}
+            }}
+        }})();
+        """
+    
+    @staticmethod
+    def _generate_update_js(progress_id: str, label_id: str, value: int) -> str:
+        """Generate JavaScript for updating progress without changing total."""
+        return f"""
+        (function() {{
+            var progressBar = document.getElementById('{progress_id}');
+            if (progressBar) {{
+                progressBar.value = {value};
+                var percent = Math.round(({value} / progressBar.max) * 100);
+                var label = document.getElementById('{label_id}');
+                if (label) {{
+                    label.textContent = percent + '%';
+                }}
+            }}
+        }})();
+        """
 
     @staticmethod
     def _create_determined_progress(progress_id: str, container_id: str,
@@ -3229,42 +3432,22 @@ class ButtonDisplayer(Displayer):
             ButtonCallbackError: If there's an issue with the callback
         """
         try:
-            # Generate unique IDs for button and container
+            # Generate unique IDs
             button_id = f"colab_print_button_{uuid.uuid4().hex[:8]}"
             container_id = f"button_container_{uuid.uuid4().hex[:8]}"
             status_id = f"status_display_{uuid.uuid4().hex[:8]}"
 
-            # Get base style
-            if style not in self.styles:
-                raise StyleNotFoundError(style_name=style)
-            base_style = self.styles.get(style)
-
-            # Process styles
-            inline_style_string = self._process_inline_styles(inline_styles)
-            final_style = f"{base_style} {inline_style_string}" if inline_style_string else base_style
-
-            # Process animation class if specified
-            animation_class = process_animation_class(animate)
-            class_attr = f'class="{animation_class}"' if animation_class else ''
-
+            # Validate and get style
+            self._validate_style(style)
+            final_style = self._prepare_button_style(style, inline_styles)
+            
+            # Process animation
+            class_attr = self._prepare_animation(animate)
+            
             # Register callback if provided
-            callback_id = None
-            if on_click:
-                try:
-                    # Try importing and using Google Colab's output module
-                    from google.colab import output
-                    callback_name = f"{button_id}_callback"
-                    callback_id = output.register_callback(callback_name, on_click)
-                    # Store reference to prevent garbage collection
-                    self._callback_registry[callback_id] = on_click
-                except (ImportError, AttributeError) as e:
-                    raise ButtonCallbackError(
-                        callback_name="on_click",
-                        message="Google Colab environment required for callbacks. "
-                                f"Failed to register callback: {str(e)}"
-                    )
+            callback_id = self._register_callback(button_id, on_click)
 
-            # Create button HTML
+            # Create HTML and JavaScript
             html_content = self._generate_button_html(
                 button_id=button_id,
                 container_id=container_id,
@@ -3279,7 +3462,6 @@ class ButtonDisplayer(Displayer):
                 position=position
             )
 
-            # Create JavaScript for button behavior
             js_content = self._generate_button_js(
                 button_id=button_id,
                 status_id=status_id,
@@ -3290,17 +3472,89 @@ class ButtonDisplayer(Displayer):
                 enabled=enabled
             )
 
-            # Display HTML and JavaScript
+            # Display content
             self._display_html_and_js(html_content, js_content)
-
             return button_id
 
-        except (StyleNotFoundError, ButtonCallbackError) as e:
+        except (StyleNotFoundError, ButtonCallbackError):
             # Pass through known exceptions
             raise
         except Exception as e:
             # Wrap unknown exceptions
             raise ButtonError(f"Error creating button: {str(e)}")
+    
+    def _validate_style(self, style: str) -> None:
+        """
+        Validate that the requested style exists.
+        
+        Args:
+            style: Style name to validate
+            
+        Raises:
+            StyleNotFoundError: If style doesn't exist
+        """
+        if style not in self.styles:
+            raise StyleNotFoundError(style_name=style)
+    
+    def _prepare_button_style(self, style: str, inline_styles: Dict[str, str]) -> str:
+        """
+        Prepare the final button style by combining base style with inline styles.
+        
+        Args:
+            style: Named style from available styles
+            inline_styles: Additional CSS styles to apply
+            
+        Returns:
+            Final CSS style string
+        """
+        base_style = self.styles.get(style)
+        inline_style_string = self._process_inline_styles(inline_styles)
+        return f"{base_style} {inline_style_string}" if inline_style_string else base_style
+    
+    def _prepare_animation(self, animate: Optional[str]) -> str:
+        """
+        Process animation class if specified.
+        
+        Args:
+            animate: Animation effect name
+            
+        Returns:
+            Class attribute string for HTML
+        """
+        animation_class = process_animation_class(animate)
+        return f'class="{animation_class}"' if animation_class else ''
+    
+    def _register_callback(self, button_id: str, on_click: Optional[Callable]) -> Optional[str]:
+        """
+        Register callback function for the button if provided.
+        
+        Args:
+            button_id: Unique ID for the button
+            on_click: Callback function to register
+            
+        Returns:
+            Callback ID or None if no callback
+            
+        Raises:
+            ButtonCallbackError: If callback registration fails
+        """
+        if not on_click:
+            return None
+            
+        try:
+            # Try importing and using Google Colab's output module
+            from google.colab import output
+            callback_name = f"{button_id}_callback"
+            callback_id = output.register_callback(callback_name, on_click)
+            # Store reference to prevent garbage collection
+            self._callback_registry[callback_id] = on_click
+            return callback_id
+        except (ImportError, AttributeError) as e:
+            raise ButtonCallbackError(
+                callback_name="on_click",
+                message="Google Colab environment required for callbacks. "
+                        f"Failed to register callback: {str(e)}"
+            )
 
     # noinspection RegExpAnonymousGroup
     @staticmethod
@@ -3470,6 +3724,7 @@ class ButtonDisplayer(Displayer):
     @staticmethod
     def _get_js_click_effect(callback_id: Optional[str], status_display: bool) -> str:
         """"Generate JavaScript for click effect."""
+
         effect = """// OnClick with Python callback
     button.addEventListener("click", function(e) {{
         {log_click}
@@ -3494,11 +3749,13 @@ class ButtonDisplayer(Displayer):
             log_result='logEvent("PythonCallback", `Returned: ${result.data["text/plain"]}`);' if status_display else "",
             log_error='logEvent("Error", `Python callback error: ${error}`);' if status_display else ""
         )
+
         return effect
 
     @staticmethod
     def _get_press_effect(status_display: bool) -> str:
         """"Generate JavaScript for press effect."""
+
         effect = """// OnPressDown (mousedown event)
     button.addEventListener("mousedown", function(e) {{
         {log_press_down}
@@ -3515,11 +3772,13 @@ class ButtonDisplayer(Displayer):
             log_press_down='logEvent("OnPressDown", `at position (${e.offsetX}, ${e.offsetY})`);' if status_display else "",
             log_press_up='logEvent("OnPressUp");' if status_display else ""
         )
+
         return effect
 
     @staticmethod
     def _get_js_hover_effect(status_display: bool) -> str:
         """"Generate JavaScript for hover effect."""
+        
         effect = """// OnHoverEntering (mouseenter event)
     button.addEventListener("mouseenter", function(e) {{
         {log_hover_enter}
@@ -3536,6 +3795,7 @@ class ButtonDisplayer(Displayer):
             log_hover_enter='logEvent("OnHoverEntering");' if status_display else "",
             log_hover_exit='logEvent("OnHoverExit");' if status_display else ""
         )
+
         return effect
 
     @staticmethod
@@ -3864,7 +4124,6 @@ class PDFDisplayer(Displayer):
         Raises:
             PDFDownloadError: If there's an error downloading the PDF
         """
-        import urllib.request
         import logging
 
         logger = logging.getLogger(__name__)
@@ -3901,11 +4160,6 @@ class PDFDisplayer(Displayer):
         Returns:
             Path to the downloaded temporary file
         """
-        import os
-        import tempfile
-        import urllib.request
-        import hashlib
-        from typing import Optional
 
         # Create a temporary file
         temp_dir = tempfile.gettempdir()
@@ -3955,7 +4209,6 @@ class PDFDisplayer(Displayer):
         Raises:
             PDFDownloadError: If the file is not a valid PDF
         """
-        import os
 
         if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
             raise PDFDownloadError(
@@ -3982,9 +4235,6 @@ class PDFDisplayer(Displayer):
         Returns:
             JavaScript code to auto-load the PDF
         """
-        import base64
-        import mimetypes
-        import os
 
         # Read the file
         with open(file_path, 'rb') as f:
@@ -4035,9 +4285,6 @@ class PDFDisplayer(Displayer):
         Raises:
             FileNotFoundError: If the file does not exist
         """
-        import os
-        import base64
-        import mimetypes
 
         # Check if file exists
         if not os.path.exists(file_path):

@@ -677,3 +677,73 @@ def pdf_(source: Optional[str] = None, *,
         animate=animate,
         **inline_styles
     )
+
+# In colab_print/functions.py
+
+# def hr(*, animate: Optional[str] = None, **override_styles) -> None:
+#     """
+#     Display a horizontal rule (divider line).
+
+#     Args:
+#         animate: Animation effect from Animate.css.
+#         **override_styles: Override CSS properties for the hr element.
+#                           (e.g., color, height, margin).
+#     """
+#     # Could use a dedicated style 'hr_style' or similar
+#     P.display("", style='hr_style', animate=animate, **override_styles) 
+#     # Alternatively, Printer could have a specific P.display_hr() method.
+
+# In colab_print/functions.py
+
+# def latex(
+#     formula: str,
+#     *,
+#     display_mode: bool = True,
+#     animate: Optional[str] = None,
+#     **override_styles
+# ) -> None:
+#     """
+#     Render and display a LaTeX mathematical formula.
+
+#     Args:
+#         formula: The LaTeX string to render (e.g., r'\sum_{i=0}^n x_i^2').
+#         display_mode: If True, render as a block element (centered). 
+#                       If False, render inline.
+#         animate: Animation effect from Animate.css.
+#         **override_styles: Override CSS for the container.
+#     """
+#     # This would call a new method, e.g., P.display_latex(...)
+#     P.display_latex(
+#         formula,
+#         display_mode=display_mode,
+#         animate=animate,
+#         style='latex_container', # Example style name
+#         **override_styles
+#     )
+
+# In colab_print/functions.py
+
+# def json_(
+#     data: Union[str, Dict, List],
+#     *,
+#     initial_depth: Optional[int] = None, # For collapsible sections
+#     animate: Optional[str] = None,
+#     **override_styles
+# ) -> None:
+#     """
+#     Display JSON data with syntax highlighting and optional interactivity.
+
+#     Args:
+#         data: The JSON string, dictionary, or list to display.
+#         initial_depth: If interactive (collapsible), the initial expansion depth.
+#         animate: Animation effect from Animate.css.
+#         **override_styles: Override CSS properties for the container.
+#     """
+#     # This would call a new method, e.g., P.display_json(...)
+#     P.display_json(
+#         data,
+#         initial_depth=initial_depth,
+#         animate=animate,
+#         style='json_viewer', # Example style name
+#         **override_styles
+#     )

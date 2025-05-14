@@ -16,7 +16,7 @@ from colab_print import (
     Printer, header, title, subtitle, section_divider, subheader,
     code, card, quote, badge, data_highlight, footer,
     highlight, info, success, warning, error, muted, primary, secondary,
-    dfd, table, list_, dict_, progress, mermaid, md, button, pdf_
+    dfd, table, list_, dict_, progress, mermaid, md, pdf_
 )
 
 P = Printer()
