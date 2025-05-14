@@ -57,7 +57,6 @@ Basic Usage:
         return "__UPDATE_BUTTON_TEXT__: Clicked!"
     
     button_id = button("Click Me", on_click=on_click)
-
 See [example.py](https://github.com/alaamer12/colab-print/blob/main/example.py) for complete style list and customization options.
 """
 

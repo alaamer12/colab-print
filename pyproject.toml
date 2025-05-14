@@ -75,6 +75,8 @@ classifiers = [
 dependencies = [
     "pandas>=1.0.0",
     "ipython>=7.0.0",
+    "markdown>=3.7",
+    "html2text>=2024.2.26",
 ]
 
 [project.urls]
@@ -94,7 +96,7 @@ include = [
     "/README.md",
     "/LICENSE",
     "/example.py",
-#    "/requirements.txt",
+    "/requirements.txt",
     "CHANGELOG.md",
 ]
 
@@ -104,7 +106,7 @@ include = [
     "/README.md",
     "/LICENSE",
     "/example.py",
-#    "/requirements.txt",
+    "/requirements.txt",
     "CHANGELOG.md",
 ]
 packages = ["colab_print"]

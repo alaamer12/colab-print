@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.6.0b0] - 2025-05-25
+## [0.6.0b0] - 2025-05-14
 
 ### Added
 - New PDF display functionality with interactive viewer capabilities
@@ -31,7 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - PDF rendering is handled directly in the browser using native capabilities
 - Detailed examples available in the example.py file
 
-## [0.5.0b0] - 2025-05-15
+## [0.5.0b0] - 2025-05-04
 
 ### Added
 - New interactive button component with extensive event handling capabilities
@@ -58,7 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Button callbacks require Google Colab environment to function properly
 - Full API documentation available in docstrings and example notebooks
 
-## [0.4.1] - 2025-05-05
+## [0.4.1] - 2025-05-01
 
 ### Added
 - Introduced new `compact` parameter to TableDisplayer to control data condensing behavior

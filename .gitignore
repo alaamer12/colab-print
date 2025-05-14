@@ -5,6 +5,7 @@
 **/.env.test.local
 **/.env.production.local
 **/__pycache__/*
+uv.lock
 
 .pypackage/*
 .pypackage/.venv/*
