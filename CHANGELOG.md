@@ -5,7 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.6.1] - 2025-05-31
+## [0.7.0] - 2025-05-31
+
+### Added
+- New TextBox component for creating styled containers with titles, captions, and progress bars
+  - Support for required title parameter with proper validation
+  - Optional caption paragraphs displayed as separate text blocks
+  - Optional progress bar with customizable value, max, and label
+  - Style customization with predefined themes (default, info, success, warning, error, etc.)
+  - Animation support via Animate.css integration
+  - **Dynamic content updates** for real-time information display (like timers or continuous data)
+- Added convenience `text_box()` function for quick access to TextBox display
+- Added `update_text_box()` function for updating TextBox content dynamically
+- Added TextBoxDisplayer class with dynamic ID tracking for updates
+- Added TextBoxDisplayer methods to the Printer class API:
+  - `display_text_box(title, captions=None, progress=None, style="default", animate=None, **inline_styles)`
+- New TextBox-specific exception classes for robust error handling:
+  - `TextBoxError` as the base class for TextBox-related exceptions
+  - `MissingTitleError` for title validation
+  - `InvalidProgressValueError` for progress bar validation
+  - `UnsupportedComponentError` for unsupported component types
+
+### Improved
+- Enhanced style definitions with dedicated TextBox styles in both DEFAULT_THEMES and SPECIAL_STYLES
+- Added specialized styles for TextBox components (title, captions, progress container)
+- Better documentation with comprehensive examples for TextBox usage
+- Extended example.py with TextBox demonstrations
+
+## [0.6.1] - 2025-05-18
 
 ### Added
 - Support for pandas Series objects in DataFrame display functions

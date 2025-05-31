@@ -16,6 +16,7 @@
   - [Status Feedback](#status-feedback)
   - [Data Visualization](#data-visualization)
   - [Interactive Elements](#interactive-elements)
+  - [TextBox Display](#textbox-display)
   - [PDF Display](#pdf-display)
 - [Styling Options](#styling-options)
 - [Advanced Usage](#advanced-usage)
@@ -38,6 +39,7 @@
 - 🔄 **Graceful Fallbacks** - Works even outside Jupyter/IPython environments
 - 🧩 **Structured Data Detection** - Automatic handling of nested structures, matrices, and array-like objects
 - 🖱️ **Interactive Buttons** - Create clickable buttons with Python callback functions
+- 📦 **Dynamic TextBoxes** - Create styled containers with real-time updates for continuous data
 - ✨ **Animation Effects** - Apply beautiful animations to any displayed element
 - 📊 **Mermaid Diagrams** - Render Mermaid.js diagrams with customizable styling
 - 📝 **Markdown Rendering** - Display Markdown content from strings, files, or URLs
@@ -276,6 +278,95 @@ P.enable_button(btn_id, False)  # Disable button
 for i in progress(range(10), desc="Processing", color="#9C27B0"):
     time.sleep(0.2)  # Simulate work
 ```
+
+<a id="textbox-display"></a>
+## TextBox Display
+
+TextBox component allows you to create styled containers with titles, captions, and progress bars. It's particularly useful for presenting information in a structured, visually appealing format, with support for dynamic updates.
+
+### TextBox Functions
+
+| Function                                                                                                    | Description                                  | Example                                                |
+|-------------------------------------------------------------------------------------------------------------|----------------------------------------------|--------------------------------------------------------|
+| <a id="text-box-func"></a>`text_box(title, *, captions=None, progress=None, style="default", **options)`    | Display a styled text box with components    | `text_box("Information", captions=["Important note"])` |
+| <a id="update-text-box-func"></a>`update_text_box(text_box_id, *, title=None, captions=None, progress=None)`| Update an existing text box dynamically      | `update_text_box(box_id, captions=["Updated info"])`   |
+
+### Basic TextBox Examples
+
+```python
+from colab_print import text_box
+
+# Simple text box with just a title
+text_box("Simple Information Box")
+
+# Text box with captions and a specific style
+text_box(
+    "Warning Notice",
+    captions=[
+        "This operation cannot be undone.",
+        "Please proceed with caution."
+    ],
+    style="warning"
+)
+
+# Text box with progress bar
+text_box(
+    "Download Status",
+    captions=["Downloading important files..."],
+    progress={"value": 75, "max": 100, "label": "Progress"},
+    style="primary"
+)
+
+# Custom styled text box
+text_box(
+    "Custom Box",
+    captions=["This box uses custom styling."],
+    background_color="#f5f5f5",
+    border="1px solid #ddd",
+    border_radius="10px",
+    box_shadow="0 4px 8px rgba(0,0,0,0.1)"
+)
+```
+
+### Dynamic Updates Example
+
+TextBoxes support dynamic updates, making them perfect for displaying real-time information or continuous data:
+
+```python
+import time
+from colab_print import text_box, update_text_box
+
+# Create a text box and store its ID
+timer_box_id = text_box(
+    "Task Timer",
+    captions=["Task started just now"],
+    progress={"value": 0, "max": 60, "label": "Duration"},
+    style="info"
+)
+
+# Update the text box with new information every second
+start_time = time.time()
+for i in range(1, 11):
+    time.sleep(1)  # Wait for 1 second
+    elapsed = int(time.time() - start_time)
+    
+    # Update both captions and progress
+    update_text_box(
+        timer_box_id,
+        captions=[f"Task running for {elapsed} seconds"],
+        progress={"value": elapsed, "max": 60, "label": "Duration"}
+    )
+
+# Final update with changed title
+update_text_box(
+    timer_box_id,
+    title="Task Complete",
+    captions=["Task finished successfully!"],
+    progress={"value": int(time.time() - start_time), "max": 60, "label": "Total Time"}
+)
+```
+
+This example creates a real-time timer that updates both text and progress bar, demonstrating how TextBoxes can be used for monitoring ongoing processes or displaying continuously changing data.
 
 <a id="pdf-display"></a>
 ### PDF Display
