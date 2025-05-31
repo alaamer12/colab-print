@@ -16,7 +16,7 @@ from colab_print import (
     Printer, header, title, subtitle, section_divider, subheader,
     code, card, quote, badge, data_highlight, footer,
     highlight, info, success, warning, error, muted, primary, secondary,
-    dfd, table, list_, dict_, progress, mermaid, md, pdf_
+    dfd, table, list_, dict_, progress, mermaid, md, pdf_, text_box
 )
 
 P = Printer()
@@ -1171,40 +1171,156 @@ def pdf_examples():
     pdf_()
 
 
+def demo_text_box():
+    """Demo using the text box feature."""
+    
+    print("\n=== DEMO: Text Box Display ===")
+    
+    # Basic text box with just a title
+    text_box("Simple Text Box", style="default")
+    
+    # Text box with captions
+    text_box(
+        "Information",
+        captions=[
+            "This is a text box with multiple paragraphs of information.",
+            "You can use it to display important notices or instructions to users.",
+            "The text is formatted as separate paragraphs for better readability."
+        ],
+        style="info"
+    )
+    
+    # Text box with warning style
+    text_box(
+        "Warning!",
+        captions=["This operation cannot be undone. Please proceed with caution."],
+        style="warning",
+        border_radius="4px",
+        border_left="5px solid #F39C12"
+    )
+    
+    # Text box with progress bar
+    text_box(
+        "Download Status",
+        captions=["Downloading important files..."],
+        progress={"value": 75, "max": 100, "label": "Progress"},
+        style="primary"
+    )
+    
+    # Text box with animation
+    text_box(
+        "New Feature",
+        captions=[
+            "We've just released our newest feature!",
+            "Check it out by visiting the settings page."
+        ],
+        style="success",
+        animate="fadeIn"
+    )
+    
+    # Custom styled text box
+    text_box(
+        "Custom Styled Box",
+        captions=["This text box uses custom inline styles for a unique appearance."],
+        background_color="#f5f5f5",
+        border="1px solid #ddd",
+        border_radius="10px",
+        box_shadow="0 4px 8px rgba(0,0,0,0.1)",
+        padding="20px"
+    )
+    
+    # Text box with error style
+    text_box(
+        "Error Occurred",
+        captions=[
+            "The operation could not be completed due to the following errors:",
+            "• Invalid input parameters",
+            "• Missing required permissions",
+            "Please correct these issues and try again."
+        ],
+        style="error"
+    )
+    
+    # Text box with dynamic progress bar demonstration
+    progress_box_id = text_box(
+        "Processing Files",
+        captions=["Starting file processing operation..."],
+        progress={"value": 0, "max": 100, "label": "Files Processed"},
+        style="text_box"
+    )
+    
+    # Simulate processing with progress updates
+    for i in range(0, 101, 20):
+        time.sleep(0.5)  # Simulate work
+        update_text_box(
+            progress_box_id,
+            captions=[f"Processing files: {i}% complete"],
+            progress={"value": i, "max": 100, "label": "Files Processed"}
+        )
+    
+    # Text box with continuous timer updates
+    print("\n=== DEMO: Text Box with Continuous Updates (Timer) ===")
+    
+    # Create a text box with a timer
+    timer_box_id = text_box(
+        "Real-Time Task Timer",
+        captions=["Task started just now"],
+        progress={"value": 0, "max": 60, "label": "Task Duration"},
+        style="info",
+        border_radius="8px",
+        box_shadow="0 4px 8px rgba(0,0,0,0.1)"
+    )
+    
+    # Update the timer every second for 10 seconds
+    start_time = time.time()
+    for i in range(1, 11):
+        time.sleep(1)  # Wait for 1 second
+        elapsed = int(time.time() - start_time)
+        update_text_box(
+            timer_box_id,
+            captions=[f"Task running for {elapsed} seconds"],
+            progress={"value": min(elapsed, 60), "max": 60, "label": "Task Duration"}
+        )
+    
+    # Final update
+    final_elapsed = int(time.time() - start_time)
+    update_text_box(
+        timer_box_id,
+        title="Task Complete",
+        captions=[
+            f"Task completed in {final_elapsed} seconds",
+            "All operations were successful!"
+        ],
+        progress={"value": final_elapsed, "max": 60, "label": "Total Duration"}
+    )
+
+
 def main():
-    """Run all the example demos."""
-    title("Colab Print Library Demo", animate="fadeIn")
+    """Run all demo functions."""
+    title("Colab Print Demo")
+    subtitle("A showcase of various display capabilities")
 
-    divider("Printer Class Demo")
+    # Core display features
     demo_printer_class()
-
-    divider("Global Shortcuts Demo")
     demo_global_shortcuts()
-
-    divider("Progress Bars Demo")
     demo_progress_bars()
-
-    divider("Enhanced Lists Demo")
     demo_enhanced_lists()
-
-    divider("Animation Demo")
-    demo_animation()
-
-    divider("Mermaid Diagrams Demo")
     demo_mermaid_diagrams()
-    display_mermaid_2()
-
-    divider("Markdown Display Demo")
-    demo_md()
-
-    divider("PDF Display Demo")
-    pdf_examples()
-
-    divider("Enhanced Code Display Demo")
     demo_enhanced_code_display()
-
-    divider("Table Display Demo")
+    demo_animation()
+    demo_md()
+    
+    # Table display features
+    section_divider("Table Display Features")
     demo_table_display()
+    
+    # PDF display features
+    section_divider("PDF Display Features")
+    pdf_examples()
+    
+    # Text Box display features
+    section_divider("Text Box Display Features")
+    demo_text_box()
 
 
 if __name__ == "__main__":

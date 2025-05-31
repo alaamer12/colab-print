@@ -165,6 +165,14 @@ DEFAULT_THEMES = {
     'primary': 'color: #3498DB; font-size: 16px; font-weight: 600; font-family: Arial, sans-serif; letter-spacing: 0.3px; background-color: rgba(52, 152, 219, 0.08); padding: 6px 10px; border-radius: 4px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);',
     'secondary': 'color: #9B59B6; font-size: 16px; font-weight: 600; font-family: Arial, sans-serif; letter-spacing: 0.3px; background-color: rgba(155, 89, 182, 0.08); padding: 6px 10px; border-radius: 4px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);',
     'pdf': 'font-family: "Inter", sans-serif; color: #333333; font-size: 16px; padding: 0; margin: 0; border-radius: 8px; container_style: background-color: #f8f9fa; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);',
+    # Text box styles
+    'text_box_default': 'color: #333333; font-family: Arial, sans-serif; padding: 15px; border-radius: 8px; border: 1px solid #E0E0E0; background-color: #FFFFFF; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin: 15px 0;',
+    'text_box_info': 'color: #31708f; font-family: Arial, sans-serif; padding: 15px; border-radius: 8px; border: 1px solid #bce8f1; background-color: #d9edf7; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin: 15px 0;',
+    'text_box_success': 'color: #3c763d; font-family: Arial, sans-serif; padding: 15px; border-radius: 8px; border: 1px solid #d6e9c6; background-color: #dff0d8; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin: 15px 0;',
+    'text_box_warning': 'color: #8a6d3b; font-family: Arial, sans-serif; padding: 15px; border-radius: 8px; border: 1px solid #faebcc; background-color: #fcf8e3; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin: 15px 0;',
+    'text_box_error': 'color: #a94442; font-family: Arial, sans-serif; padding: 15px; border-radius: 8px; border: 1px solid #ebccd1; background-color: #f2dede; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin: 15px 0;',
+    'text_box_primary': 'color: #ffffff; font-family: Arial, sans-serif; padding: 15px; border-radius: 8px; border: 1px solid #2e6da4; background-color: #337ab7; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin: 15px 0;',
+    'text_box_secondary': 'color: #ffffff; font-family: Arial, sans-serif; padding: 15px; border-radius: 8px; border: 1px solid #6c757d; background-color: #6c757d; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin: 15px 0;',
 }
 
 # Define specialized style variables for easy access
@@ -222,6 +230,21 @@ SPECIAL_STYLES = {
     'interactive_button': 'background-color: #3498db; color: white; padding: 12px 24px; font-size: 16px; border: none; border-radius: 8px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 6px rgba(0,0,0,0.1); position: relative; outline: none;',
 
     'pdf': 'container_style: font-family: "Inter", sans-serif; width: 100%; max-width: 800px; margin: 20px auto; padding: 20px; background-color: #f8f9fa; border-radius: 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); display: block; clear: both;',
+
+    # Text box styles
+    'text_box': 'color: #333333; font-family: Arial, sans-serif; padding: 20px; border-radius: 8px; border: 1px solid #E0E0E0; background-color: #FFFFFF; box-shadow: 0 3px 10px rgba(0,0,0,0.1); margin: 20px 0; display: block; clear: both;',
+    
+    'text_box_title': 'color: #2C3E50; font-size: 20px; font-weight: bold; font-family: Arial, sans-serif; margin: 0 0 15px 0; padding-bottom: 10px; border-bottom: 1px solid #EEE; display: block;',
+    
+    'text_box_caption': 'color: #555; font-size: 15px; font-family: Arial, sans-serif; margin: 8px 0; line-height: 1.5; display: block;',
+    
+    'text_box_progress_container': 'margin: 15px 0 5px 0; display: block;',
+    
+    'text_box_progress_label': 'color: #555; font-size: 14px; font-family: Arial, sans-serif; margin-bottom: 5px; display: block;',
+    
+    'text_box_flat': 'color: #333333; font-family: Arial, sans-serif; padding: 15px; border: none; background-color: #f8f9fa; margin: 15px 0; display: block; clear: both;',
+    
+    'text_box_outlined': 'color: #333333; font-family: Arial, sans-serif; padding: 15px; border-radius: 0; border: 2px solid #dee2e6; background-color: transparent; margin: 15px 0; display: block; clear: both;',
 }
 
 
