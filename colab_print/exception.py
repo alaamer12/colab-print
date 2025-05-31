@@ -20,6 +20,7 @@ Categories:
     - Animation: Errors related to CSS animations
     - Button: Errors related to interactive buttons
     - PDF: Errors related to PDF display and processing
+    - TextBox: Errors related to TextBox display and components
 
 Example:
     ```python
@@ -54,6 +55,10 @@ Note:
             - PDFSourceError
             - PDFRenderingError
             - PDFDownloadError
+        - TextBoxError
+            - MissingTitleError
+            - InvalidProgressValueError
+            - UnsupportedComponentError
 """
 
 
@@ -412,3 +417,41 @@ class PDFDownloadError(PDFError):
             message = f"Failed to download PDF from URL: {url}"
         super().__init__(message)
         self.url = url
+
+
+# TextBox Display Exceptions
+class TextBoxError(ContentTypeError):
+    """Base exception raised for TextBox display issues."""
+
+    def __init__(self, message="TextBox display error"):
+        super().__init__(expected_type="TextBox", message=message)
+
+
+class MissingTitleError(TextBoxError):
+    """Exception raised when a TextBox is created without a required title."""
+
+    def __init__(self, message="TextBox requires a title"):
+        super().__init__(message)
+
+
+class InvalidProgressValueError(TextBoxError):
+    """Exception raised when a progress value is invalid."""
+
+    def __init__(self, value=None, max_value=None, message=None):
+        if message is None:
+            message = f"Invalid progress value: {value}"
+            if max_value is not None:
+                message += f" (max: {max_value})"
+        super().__init__(message)
+        self.value = value
+        self.max_value = max_value
+
+
+class UnsupportedComponentError(TextBoxError):
+    """Exception raised when an unsupported component type is added to a TextBox."""
+
+    def __init__(self, component_type="Unknown", message=None):
+        if message is None:
+            message = f"Unsupported component type: {component_type}"
+        super().__init__(message)
+        self.component_type = component_type

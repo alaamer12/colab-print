@@ -66,7 +66,8 @@ __all__ = [
     "code", "card", "quote", "badge", "data_highlight", "footer",
     "highlight", "info", "success", "warning", "error", "muted",
     "primary", "secondary", "dfd", "table", "list_", "dict_",
-    "progress", "mermaid", "md", "button", "pdf_"
+    "progress", "mermaid", "md", "button", "pdf_", "text_box",
+    "update_text_box"
 ]
 
 
@@ -678,72 +679,100 @@ def pdf_(source: Optional[str] = None, *,
         **inline_styles
     )
 
-# In colab_print/functions.py
 
-# def hr(*, animate: Optional[str] = None, **override_styles) -> None:
-#     """
-#     Display a horizontal rule (divider line).
+def text_box(title: str, *,
+           captions: Optional[List[str]] = None,
+           progress: Optional[Dict[str, Any]] = None,
+           style: str = "default",
+           animate: Optional[str] = None,
+           **inline_styles) -> str:
+    """
+    Display a styled text box with optional components.
+    
+    Args:
+        title: The main title/heading of the text box
+        captions: List of caption paragraphs to display in order
+        progress: Optional progress bar parameters:
+                  {'value': int, 'max': int, 'label': str}
+        style: Named style from available styles
+        animate: Animation effect from Animate.css
+        **inline_styles: Additional CSS styles to apply
+        
+    Returns:
+        str: The unique ID of the text box for dynamic updates
+        
+    Examples:
+        >>> # Basic text box
+        >>> text_box("Important Information", 
+        ...          captions=["This is important to know."],
+        ...          style="info")
+        >>>
+        >>> # Text box with progress bar
+        >>> text_box("Download Status", 
+        ...          captions=["Downloading files..."], 
+        ...          progress={"value": 75, "max": 100, "label": "Progress"})
+        >>>
+        >>> # Text box with animation
+        >>> text_box("New Feature", 
+        ...          captions=["Check out our newest feature!"], 
+        ...          style="success", 
+        ...          animate="fadeIn")
+        >>>
+        >>> # Creating a text box and getting its ID for updates
+        >>> box_id = text_box("Processing Files",
+        ...                    captions=["Starting process..."],
+        ...                    progress={"value": 0, "max": 100, "label": "Progress"})
+        >>> # Later update the text box
+        >>> update_text_box(box_id, 
+        ...                 captions=["50% complete..."],
+        ...                 progress={"value": 50, "max": 100, "label": "Progress"})
+    """
+    return P.display_text_box(
+        title,
+        captions=captions,
+        progress=progress,
+        style=style,
+        animate=animate,
+        **inline_styles
+    )
 
-#     Args:
-#         animate: Animation effect from Animate.css.
-#         **override_styles: Override CSS properties for the hr element.
-#                           (e.g., color, height, margin).
-#     """
-#     # Could use a dedicated style 'hr_style' or similar
-#     P.display("", style='hr_style', animate=animate, **override_styles) 
-#     # Alternatively, Printer could have a specific P.display_hr() method.
 
-# In colab_print/functions.py
-
-# def latex(
-#     formula: str,
-#     *,
-#     display_mode: bool = True,
-#     animate: Optional[str] = None,
-#     **override_styles
-# ) -> None:
-#     """
-#     Render and display a LaTeX mathematical formula.
-
-#     Args:
-#         formula: The LaTeX string to render (e.g., r'\sum_{i=0}^n x_i^2').
-#         display_mode: If True, render as a block element (centered). 
-#                       If False, render inline.
-#         animate: Animation effect from Animate.css.
-#         **override_styles: Override CSS for the container.
-#     """
-#     # This would call a new method, e.g., P.display_latex(...)
-#     P.display_latex(
-#         formula,
-#         display_mode=display_mode,
-#         animate=animate,
-#         style='latex_container', # Example style name
-#         **override_styles
-#     )
-
-# In colab_print/functions.py
-
-# def json_(
-#     data: Union[str, Dict, List],
-#     *,
-#     initial_depth: Optional[int] = None, # For collapsible sections
-#     animate: Optional[str] = None,
-#     **override_styles
-# ) -> None:
-#     """
-#     Display JSON data with syntax highlighting and optional interactivity.
-
-#     Args:
-#         data: The JSON string, dictionary, or list to display.
-#         initial_depth: If interactive (collapsible), the initial expansion depth.
-#         animate: Animation effect from Animate.css.
-#         **override_styles: Override CSS properties for the container.
-#     """
-#     # This would call a new method, e.g., P.display_json(...)
-#     P.display_json(
-#         data,
-#         initial_depth=initial_depth,
-#         animate=animate,
-#         style='json_viewer', # Example style name
-#         **override_styles
-#     )
+def update_text_box(text_box_id: str, *,
+                    title: Optional[str] = None,
+                    captions: Optional[List[str]] = None,
+                    progress: Optional[Dict[str, Any]] = None) -> None:
+    """
+    Update an existing text box with new content.
+    
+    Args:
+        text_box_id: The ID of the text box to update
+        title: New title for the text box (if None, keeps existing title)
+        captions: New captions for the text box (if None, keeps existing captions)
+        progress: New progress bar parameters (if None, keeps existing progress)
+            
+    Examples:
+        >>> # Create a text box with an ID
+        >>> box_id = text_box("Processing Files",
+        ...                    captions=["Starting process..."],
+        ...                    progress={"value": 0, "max": 100, "label": "Progress"})
+        >>>
+        >>> # Update just the captions
+        >>> update_text_box(box_id, captions=["Processing files..."])
+        >>>
+        >>> # Update progress bar only
+        >>> update_text_box(box_id, progress={"value": 50, "max": 100, "label": "Progress"})
+        >>>
+        >>> # Update both captions and progress
+        >>> update_text_box(box_id, 
+        ...                 captions=["Almost done!"],
+        ...                 progress={"value": 90, "max": 100, "label": "Progress"})
+        >>>
+        >>> # Update the title
+        >>> update_text_box(box_id, title="File Processing Complete")
+    """
+    P.update_text_box(
+        text_box_id,
+        title=title,
+        captions=captions,
+        progress=progress
+    )

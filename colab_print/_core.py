@@ -80,7 +80,8 @@ from colab_print.exception import (ColabPrintError, TextError, ColorError,
                                    CodeParsingError, SyntaxHighlightingError, InvalidParameterError, AnimationError,
                                    ButtonError, ButtonCallbackError,
                                    MarkdownSourceError, MarkdownParsingError, MarkdownRenderingError,
-                                   PDFSourceError, PDFDownloadError, PDFRenderingError)
+                                   PDFSourceError, PDFDownloadError, PDFRenderingError,
+                                   MissingTitleError, InvalidProgressValueError, UnsupportedComponentError, TextBoxError)
 from colab_print.utilities import DEFAULT_THEMES, SPECIAL_STYLES, process_animation_class, df_like, series_like
 
 __all__ = [
@@ -4734,6 +4735,398 @@ class PDFDisplayer(Displayer):
         return script
 
 
+class TextBoxDisplayer(Displayer):
+    """
+    Component for displaying versatile container boxes with title, captions, and progress bars.
+    
+    This displayer enables the creation of styled container boxes that can embed
+    various elements including titles, captions, progress bars, and potentially other
+    components in the future. It provides a clean, structured way to present
+    information in a notebook environment.
+    """
+
+    def __init__(self, styles: Dict[str, str]):
+        """
+        Initialize TextBox displayer with styles.
+        
+        Args:
+            styles: Dictionary of available named styles
+        """
+        super().__init__(styles)
+
+    def display(self, title: str, *,
+                captions: Optional[List[str]] = None,
+                progress: Optional[Dict[str, Any]] = None,
+                style: str = "default",
+                animate: Optional[str] = None,
+                **inline_styles) -> str:
+        """
+        Display a styled text box with optional components.
+        
+        Args:
+            title: The main title/heading of the text box
+            captions: List of caption paragraphs to display in order
+            progress: Optional progress bar parameters:
+                      {'value': int, 'max': int, 'label': str}
+            style: Named style from available styles
+            animate: Animation effect from Animate.css
+            **inline_styles: Additional CSS styles to apply
+            
+        Returns:
+            str: The unique ID of the text box for dynamic updates
+            
+        Raises:
+            MissingTitleError: If no title is provided
+            InvalidProgressValueError: If progress values are invalid
+            StyleNotFoundError: If specified style is not found
+            UnsupportedComponentError: If an unsupported component is specified
+            HTMLRenderingError: If HTML content cannot be rendered
+        """
+        try:
+            # Validate title
+            if not title or not isinstance(title, str):
+                raise MissingTitleError("TextBox requires a non-empty title string")
+                
+            # Validate style
+            if style not in self.styles:
+                raise StyleNotFoundError(
+                    style_name=style,
+                    message=f"Style '{style}' not found. Available styles: {', '.join(self.styles.keys())}"
+                )
+            
+            # Process the captions
+            processed_captions = self._process_captions(captions)
+            
+            # Process the progress bar if provided
+            progress_html = self._process_progress(progress) if progress else ""
+            
+            # Generate a unique ID for this text box
+            text_box_id = self._generate_text_box_id()
+            
+            # Generate the HTML content
+            html_content = self._generate_html(
+                text_box_id,
+                title, 
+                processed_captions, 
+                progress_html, 
+                style, 
+                animate, 
+                **inline_styles
+            )
+            
+            # Display the HTML
+            self._display_html(html_content)
+            
+            # Return the ID for future updates
+            return text_box_id
+            
+        except (MissingTitleError, StyleNotFoundError, InvalidProgressValueError, 
+                UnsupportedComponentError, HTMLRenderingError) as e:
+            # Pass through known exceptions
+            raise
+        except Exception as e:
+            # Wrap unknown exceptions
+            raise TextBoxError(f"Error displaying text box: {str(e)}")
+    
+    def update(self, text_box_id: str, *,
+               title: Optional[str] = None,
+               captions: Optional[List[str]] = None,
+               progress: Optional[Dict[str, Any]] = None) -> None:
+        """
+        Update an existing text box with new content.
+        
+        Args:
+            text_box_id: The ID of the text box to update
+            title: New title for the text box (if None, keeps existing title)
+            captions: New captions for the text box (if None, keeps existing captions)
+            progress: New progress bar parameters (if None, keeps existing progress)
+            
+        Raises:
+            DisplayUpdateError: If the text box cannot be updated
+            InvalidParameterError: If any parameters are invalid
+            IPythonNotAvailableError: If IPython environment is not detected
+        """
+        try:
+            # Validate text_box_id
+            if not text_box_id or not isinstance(text_box_id, str):
+                raise InvalidParameterError(
+                    param_name="text_box_id",
+                    expected="non-empty string",
+                    received=type(text_box_id).__name__
+                )
+            
+            # Process captions if provided
+            captions_js = "null"
+            if captions is not None:
+                processed_captions = self._process_captions(captions)
+                captions_html = ""
+                for caption in processed_captions:
+                    captions_html += f"<p>{html.escape(caption)}</p>"
+                captions_js = f'`{captions_html}`'
+            
+            # Process progress if provided
+            progress_js = "null"
+            if progress is not None:
+                progress_html = self._process_progress(progress)
+                progress_js = f'`{progress_html}`'
+            
+            # Process title if provided
+            title_js = "null"
+            if title is not None:
+                if not isinstance(title, str):
+                    raise InvalidParameterError(
+                        param_name="title",
+                        expected="string",
+                        received=type(title).__name__
+                    )
+                title_js = f'"{html.escape(title)}"'
+            
+            # Generate JavaScript to update the text box
+            js_code = self._generate_update_js(text_box_id, title_js, captions_js, progress_js)
+            
+            # Execute the JavaScript
+            from IPython.display import display, Javascript
+            display(Javascript(js_code))
+            
+        except (InvalidParameterError, IPythonNotAvailableError) as e:
+            # Pass through known exceptions
+            raise
+        except Exception as e:
+            # Wrap unknown exceptions
+            raise DisplayUpdateError(
+                element_id=text_box_id,
+                message=f"Failed to update text box: {str(e)}"
+            )
+    
+    def _process_captions(self, captions: Optional[List[str]]) -> List[str]:
+        """
+        Process and validate captions.
+        
+        Args:
+            captions: List of caption strings
+            
+        Returns:
+            Processed list of caption strings
+            
+        Raises:
+            InvalidParameterError: If captions parameter is invalid
+        """
+        if captions is None:
+            return []
+            
+        if not isinstance(captions, (list, tuple)):
+            raise InvalidParameterError(
+                param_name="captions",
+                expected="list or tuple of strings",
+                received=type(captions).__name__
+            )
+            
+        # Ensure all captions are strings
+        processed_captions = []
+        for i, caption in enumerate(captions):
+            if not isinstance(caption, str):
+                raise InvalidParameterError(
+                    param_name=f"captions[{i}]",
+                    expected="string",
+                    received=type(caption).__name__
+                )
+            processed_captions.append(caption)
+            
+        return processed_captions
+    
+    def _process_progress(self, progress: Dict[str, Any]) -> str:
+        """
+        Process progress bar parameters and generate HTML.
+        
+        Args:
+            progress: Dictionary with progress parameters:
+                      {'value': int, 'max': int, 'label': str}
+                      
+        Returns:
+            HTML string for the progress bar
+            
+        Raises:
+            InvalidProgressValueError: If progress values are invalid
+            InvalidParameterError: If progress parameter is missing required keys
+        """
+        if not isinstance(progress, dict):
+            raise InvalidParameterError(
+                param_name="progress",
+                expected="dictionary with 'value', 'max', and 'label' keys",
+                received=type(progress).__name__
+            )
+            
+        # Get progress values with defaults
+        value = progress.get('value', 0)
+        max_value = progress.get('max', 100)
+        label = progress.get('label', 'Progress')
+        
+        # Validate values
+        if not isinstance(value, (int, float)):
+            raise InvalidParameterError(
+                param_name="progress['value']",
+                expected="number",
+                received=type(value).__name__
+            )
+            
+        if not isinstance(max_value, (int, float)):
+            raise InvalidParameterError(
+                param_name="progress['max']",
+                expected="number",
+                received=type(max_value).__name__
+            )
+            
+        if value < 0 or max_value <= 0 or value > max_value:
+            raise InvalidProgressValueError(
+                value=value,
+                max_value=max_value,
+                message=f"Invalid progress values: value={value}, max={max_value}"
+            )
+            
+        # Calculate percentage for the progress bar width
+        percentage = int((value / max_value) * 100)
+        percentage_text = f"{percentage}%"
+        
+        # Generate HTML for the progress bar
+        return f"""
+        <div class="progress-label">{html.escape(str(label))}</div>
+        <div class="progress-bar">
+            <div class="progress-fill" style="width: {percentage_text};"></div>
+        </div>
+        <div class="progress-text">{percentage_text}</div>
+        """
+    
+    def _generate_html(self, text_box_id: str, title: str, captions: List[str], progress_html: str,
+                       style: str, animate: Optional[str], **inline_styles) -> str:
+        """
+        Generate HTML for the text box.
+        
+        Args:
+            text_box_id: Unique ID for the text box
+            title: Box title
+            captions: List of caption paragraphs
+            progress_html: HTML for progress bar (if any)
+            style: Style name
+            animate: Animation name
+            **inline_styles: Additional inline styles
+            
+        Returns:
+            Complete HTML for the text box
+        """
+        # Process animation class if specified
+        animation_class = process_animation_class(animate)
+        class_attr = f'class="text-box {animation_class}"' if animation_class else 'class="text-box"'
+        
+        # Process base style and inline styles
+        base_style = self.styles.get(style, '')
+        inline_style_string = self._process_inline_styles(inline_styles)
+        final_style = f"{base_style} {inline_style_string}" if inline_style_string else base_style
+        
+        # Construct captions HTML
+        captions_html = ""
+        for caption in captions:
+            captions_html += f"<p>{html.escape(caption)}</p>"
+        
+        # Construct the complete HTML
+        html_content = f"""
+        <div id="{text_box_id}" style="{final_style}" {class_attr}>
+            <div id="{text_box_id}-title" class="box-title">{html.escape(title)}</div>
+            <div id="{text_box_id}-content" class="box-content">
+                <div id="{text_box_id}-captions">{captions_html}</div>
+                <div id="{text_box_id}-progress">{progress_html}</div>
+            </div>
+        </div>
+        """
+        
+        # Include Animate.css CDN if animation is specified
+        animate_css_link = self._load_animate_css() if animate else ''
+        
+        # Add JavaScript for initialization
+        js_init = self._generate_init_js(text_box_id)
+        
+        return f"{animate_css_link}{html_content}{js_init}" if animate else f"{html_content}{js_init}"
+    
+    @staticmethod
+    def _generate_text_box_id() -> str:
+        """Generate a unique ID for a text box."""
+        import uuid
+        return f"text-box-{uuid.uuid4().hex[:8]}"
+    
+    @staticmethod
+    def _generate_init_js(text_box_id: str) -> str:
+        """Generate JavaScript to initialize the text box for updates."""
+        return f"""
+        <script>
+        (function() {{
+            // Initialize text box components for updates
+            console.log("TextBox initialized with ID: {text_box_id}");
+        }})();
+        </script>
+        """
+    
+    def _generate_update_js(self, text_box_id: str, title_js: str, captions_js: str, progress_js: str) -> str:
+        """
+        Generate JavaScript to update a text box.
+        
+        Args:
+            text_box_id: ID of the text box to update
+            title_js: JavaScript representation of the new title (or "null")
+            captions_js: JavaScript representation of the new captions HTML (or "null")
+            progress_js: JavaScript representation of the new progress HTML (or "null")
+            
+        Returns:
+            JavaScript code to update the text box
+        """
+        return f"""
+        (function() {{
+            // Get the text box elements
+            const textBox = document.getElementById("{text_box_id}");
+            const titleEl = document.getElementById("{text_box_id}-title");
+            const captionsEl = document.getElementById("{text_box_id}-captions");
+            const progressEl = document.getElementById("{text_box_id}-progress");
+            
+            if (!textBox) {{
+                console.error("TextBox with ID {text_box_id} not found");
+                return;
+            }}
+            
+            // Update title if provided
+            if ({title_js} !== null && titleEl) {{
+                titleEl.innerHTML = {title_js};
+            }}
+            
+            // Update captions if provided
+            if ({captions_js} !== null && captionsEl) {{
+                captionsEl.innerHTML = {captions_js};
+            }}
+            
+            // Update progress if provided
+            if ({progress_js} !== null && progressEl) {{
+                progressEl.innerHTML = {progress_js};
+            }}
+            
+            console.log("TextBox {text_box_id} updated successfully");
+        }})();
+        """
+    
+    @staticmethod
+    def _display_html(html_content: str) -> None:
+        """
+        Display HTML content in the notebook.
+        
+        Args:
+            html_content: HTML content to display
+            
+        Raises:
+            IPythonNotAvailableError: If IPython display is not available
+        """
+        try:
+            from IPython.display import display, HTML
+            display(HTML(html_content))
+        except ImportError:
+            raise IPythonNotAvailableError("IPython display capabilities are required to display text boxes")
+
+
 class Printer:
     """
     Main class for displaying text, tables, and DataFrames with stylized HTML.
@@ -4773,6 +5166,7 @@ class Printer:
             self.button_displayer = ButtonDisplayer(self.styles)
             self.md_displayer = MDDisplayer(self.styles)
             self.pdf_displayer = PDFDisplayer(self.styles)
+            self.text_box_displayer = TextBoxDisplayer(self.styles)
         except Exception as e:
             raise ColabPrintError(f"Error initializing Printer: {str(e)}")
 
@@ -5637,3 +6031,83 @@ class Printer:
             animate=animate,
             **inline_styles
         )
+
+    def display_text_box(self, title: str, *,
+                         captions: Optional[List[str]] = None,
+                         progress: Optional[Dict[str, Any]] = None,
+                         style: str = "default",
+                         animate: Optional[str] = None,
+                         **inline_styles) -> str:
+        """
+        Display a styled text box with optional components.
+        
+        Args:
+            title: The main title/heading of the text box
+            captions: List of caption paragraphs to display in order
+            progress: Optional progress bar parameters:
+                      {'value': int, 'max': int, 'label': str}
+            style: Named style from available styles
+            animate: Animation effect from Animate.css
+            **inline_styles: Additional CSS styles to apply
+            
+        Returns:
+            str: The unique ID of the text box for dynamic updates
+            
+        Raises:
+            MissingTitleError: If no title is provided
+            InvalidProgressValueError: If progress values are invalid
+            StyleNotFoundError: If specified style is not found
+            UnsupportedComponentError: If an unsupported component is specified
+            HTMLRenderingError: If HTML content cannot be rendered
+        """
+        try:
+            return self.text_box_displayer.display(
+                title,
+                captions=captions,
+                progress=progress,
+                style=style,
+                animate=animate,
+                **inline_styles
+            )
+        except (MissingTitleError, StyleNotFoundError, InvalidProgressValueError, 
+                UnsupportedComponentError, HTMLRenderingError) as e:
+            # Pass through known exceptions
+            raise
+        except Exception as e:
+            # Wrap unknown exceptions
+            raise TextBoxError(f"Error displaying text box: {str(e)}")
+
+    def update_text_box(self, text_box_id: str, *,
+                        title: Optional[str] = None,
+                        captions: Optional[List[str]] = None,
+                        progress: Optional[Dict[str, Any]] = None) -> None:
+        """
+        Update an existing text box with new content.
+        
+        Args:
+            text_box_id: The ID of the text box to update
+            title: New title for the text box (if None, keeps existing title)
+            captions: New captions for the text box (if None, keeps existing captions)
+            progress: New progress bar parameters (if None, keeps existing progress)
+            
+        Raises:
+            DisplayUpdateError: If the text box cannot be updated
+            InvalidParameterError: If any parameters are invalid
+            IPythonNotAvailableError: If IPython environment is not detected
+        """
+        try:
+            self.text_box_displayer.update(
+                text_box_id,
+                title=title,
+                captions=captions,
+                progress=progress
+            )
+        except (DisplayUpdateError, InvalidParameterError, IPythonNotAvailableError) as e:
+            # Pass through known exceptions
+            raise
+        except Exception as e:
+            # Wrap unknown exceptions
+            raise DisplayUpdateError(
+                element_id=text_box_id,
+                message=f"Failed to update text box: {str(e)}"
+            )
