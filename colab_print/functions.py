@@ -8,7 +8,7 @@ of a Printer object.
 
 The functions are organized into several categories:
 - Text styling: header(), title(), subtitle(), highlight(), etc.
-- Content display: dfd() for DataFrames, table() for tabular data, list_() for lists/arrays
+- Content display: dfd() for DataFrames and Series, table() for tabular data, list_() for lists/arrays
 - Feedback display: info(), success(), warning(), error() for status messages
 - Visual elements: mermaid() for diagrams, code() for syntax highlighting
 - Interactive elements: button() with callback functionality
@@ -301,12 +301,12 @@ def secondary(text: str, *, animate: Optional[str] = None, **override_styles) ->
 
 
 # Container display shortcuts - for structured data
-def dfd(df: pd.DataFrame, **display_options) -> None:
+def dfd(df: Union[pd.DataFrame, pd.Series], **display_options) -> None:
     """
-    Display a pandas DataFrame with enhanced styling.
+    Display a pandas DataFrame or Series with enhanced styling.
     
     Args:
-        df: DataFrame to display
+        df: DataFrame or Series to display
         **display_options: DataFrame display options (max_rows, max_cols, etc.)
     """
     style_options = {'style': 'df'}

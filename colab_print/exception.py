@@ -160,6 +160,13 @@ class DataFrameError(ContentTypeError):
         super().__init__(expected_type="pandas.DataFrame", message=message)
 
 
+class SeriesError(ContentTypeError):
+    """Exception raised for pandas Series issues."""
+
+    def __init__(self, message="Series error"):
+        super().__init__(expected_type="pandas.Series", message=message)
+
+
 class CodeError(ContentTypeError):
     """Exception raised for code display issues."""
 

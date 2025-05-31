@@ -75,13 +75,13 @@ from colab_print.exception import (ColabPrintError, TextError, ColorError,
                                    StyleNotFoundError, StyleError,
                                    StyleConflictError, StyleParsingError, TableError, DictError,
                                    IPythonNotAvailableError, ProgressError, ConversionError, ArrayConversionError,
-                                   FormattingError, HTMLGenerationError, HTMLRenderingError, DataFrameError,
+                                   FormattingError, HTMLGenerationError, HTMLRenderingError, DataFrameError, SeriesError,
                                    MatrixDetectionError, NestedStructureError, MermaidError, CodeError,
                                    CodeParsingError, SyntaxHighlightingError, InvalidParameterError, AnimationError,
                                    ButtonError, ButtonCallbackError,
                                    MarkdownSourceError, MarkdownParsingError, MarkdownRenderingError,
                                    PDFSourceError, PDFDownloadError, PDFRenderingError)
-from colab_print.utilities import DEFAULT_THEMES, SPECIAL_STYLES, process_animation_class, df_like
+from colab_print.utilities import DEFAULT_THEMES, SPECIAL_STYLES, process_animation_class, df_like, series_like
 
 __all__ = [
     # Main classes
@@ -1093,18 +1093,19 @@ class TableDisplayer(Displayer):
 
 
 class DFDisplayer(Displayer):
-    """Displays pandas DataFrames with extensive styling options."""
+    """Displays pandas DataFrames and Series with extensive styling options."""
 
-    def __init__(self, styles: Dict[str, str], df: pd.DataFrame):
+    def __init__(self, styles: Dict[str, str], df: Union[pd.DataFrame, pd.Series]):
         """
-        Initialize a DataFrame displayer.
+        Initialize a DataFrame or Series displayer.
         
         Args:
             styles: Dictionary of named styles
-            df: The DataFrame to display
+            df: The DataFrame or Series to display
         """
         super().__init__(styles)
         self.df = df
+        self.is_series = isinstance(df, pd.Series)
 
     @staticmethod
     def _extract_base_color(base_style: str) -> str:
@@ -1164,13 +1165,41 @@ class DFDisplayer(Displayer):
 
         return table_style, th_style, odd_td_style, even_td_style
 
-    def _prepare_dataframe(self, df: pd.DataFrame, max_rows: Optional[int],
+    def _convert_series_to_dataframe(self) -> pd.DataFrame:
+        """
+        Convert a pandas Series to a DataFrame for display.
+        
+        The Series is converted to a single-column DataFrame where:
+        - The column name is taken from the Series name (or "Value" if unnamed)
+        - The index of the Series is preserved
+        
+        Returns:
+            DataFrame representation of the Series
+            
+        Raises:
+            ConversionError: If Series conversion fails
+        """
+        try:
+            if not self.is_series:
+                return self.df
+                
+            # Convert Series to DataFrame with meaningful column name
+            series_name = self.df.name or "Value"
+            return pd.DataFrame({series_name: self.df})
+        except Exception as e:
+            raise ConversionError(
+                from_type="pandas.Series",
+                to_type="pandas.DataFrame",
+                message=f"Failed to convert Series to DataFrame: {str(e)}"
+            )
+
+    def _prepare_dataframe(self, df: Union[pd.DataFrame, pd.Series], max_rows: Optional[int],
                            max_cols: Optional[int], precision: int) -> pd.DataFrame:
         """
-        Prepare the DataFrame for display with limits and formatting.
+        Prepare the DataFrame or Series for display with limits and formatting.
         
         Args:
-            df: DataFrame to prepare
+            df: DataFrame or Series to prepare
             max_rows: Maximum number of rows to display
             max_cols: Maximum number of columns to display
             precision: Decimal precision for float values
@@ -1181,8 +1210,13 @@ class DFDisplayer(Displayer):
         Raises:
             FormattingError: If there's an error formatting the DataFrame
             DataFrameError: If there's an issue with the DataFrame structure
+            ConversionError: If Series conversion fails
         """
         try:
+            # Convert Series to DataFrame if needed
+            if isinstance(df, pd.Series):
+                df = pd.DataFrame({df.name or "Value": df})
+                
             self._validate_dataframe_params(df, max_rows, max_cols, precision)
             df_copy = df.copy()
             df_copy = self._apply_row_limits(df_copy, max_rows)
@@ -1467,7 +1501,7 @@ class DFDisplayer(Displayer):
                 highlight_cells: Optional[Dict] = None,
                 **inline_styles) -> None:
         """
-        Display a pandas DataFrame with customizable styling.
+        Display a pandas DataFrame or Series with customizable styling.
 
         Args:
             style: Named style from the available styles
@@ -1477,13 +1511,17 @@ class DFDisplayer(Displayer):
             header_style: Custom CSS for header cells
             odd_row_style: Custom CSS for odd rows
             even_row_style: Custom CSS for even rows
-            index: Whether to show DataFrame index
+            index: Whether to show DataFrame/Series index
             width: Table width (CSS value)
             caption: Table caption
             highlight_cols: Columns to highlight (list) or {col: style} mapping
             highlight_rows: Rows to highlight (list) or {row: style} mapping
             highlight_cells: Cell coordinates to highlight {(row, col): style}
             **inline_styles: Additional CSS styles for all cells
+            
+        Notes:
+            For Series, the Series name (or "Value" if unnamed) will be used as the column name
+            in the resulting table. The Series index is preserved and displayed when index=True.
         """
         # Process styles (but don't let them override the width)
         inline_styles_dict = dict(inline_styles)
@@ -1500,8 +1538,13 @@ class DFDisplayer(Displayer):
             header_style, odd_row_style, even_row_style
         )
 
-        # Prepare the DataFrame
-        df_copy = self._prepare_dataframe(self.df, max_rows, max_cols, precision)
+        # Convert Series to DataFrame if necessary and prepare the data
+        df_to_display = self.df
+        if self.is_series:
+            df_to_display = self._convert_series_to_dataframe()
+            
+        # Prepare the DataFrame (handles both original DataFrames and converted Series)
+        df_copy = self._prepare_dataframe(df_to_display, max_rows, max_cols, precision)
 
         # Build HTML components
         html = [f'<table style="{table_style}">']
@@ -4967,7 +5010,7 @@ class Printer:
 
         return params
 
-    def display_df(self, df: pd.DataFrame, *,
+    def display_df(self, df: Union[pd.DataFrame, pd.Series], *,
                    style: str = 'default',
                    max_rows: Optional[int] = None,
                    max_cols: Optional[int] = None,
@@ -4983,18 +5026,18 @@ class Printer:
                    highlight_cells: Optional[Dict] = None,
                    **inline_styles) -> None:
         """
-        Display a pandas DataFrame with customizable styling.
+        Display a pandas DataFrame or Series with customizable styling.
         
         Args:
-            df: DataFrame to display
+            df: DataFrame or Series to display
             style: Named style from available styles
             max_rows: Maximum number of rows to display
-            max_cols: Maximum number of columns to display
+            max_cols: Maximum number of columns to display (applies only to DataFrames)
             precision: Decimal precision for float values
             header_style: Custom CSS for header cells
             odd_row_style: Custom CSS for odd rows
             even_row_style: Custom CSS for even rows
-            index: Whether to show DataFrame index
+            index: Whether to show DataFrame/Series index
             width: Table width (CSS value)
             caption: Table caption
             highlight_cols: Columns to highlight (list) or {col: style} mapping
@@ -5003,21 +5046,26 @@ class Printer:
             **inline_styles: Additional CSS styles for all cells
             
         Raises:
-            DataFrameError: If df is not a pandas DataFrame or there's an issue with the data
+            DataFrameError: If df is not a pandas DataFrame and not a pandas Series
+            SeriesError: If there's an issue with the Series structure
             StyleNotFoundError: If specified style is not found
             InvalidParameterError: If invalid parameters are provided
             DisplayEnvironmentError: If display environment is not available
+            
+        Notes:
+            For Series, the Series name (or "Value" if unnamed) will be used as the column name
+            in the resulting table. The Series index is preserved and displayed when index=True.
         """
 
-        # Check if not df is a dataframe-like object
+        # Check if df is a dataframe-like or series-like object
+        dfe = "The 'df' parameter must be a pandas DataFrame or Series"
+        
         if not df_like(df):
-            raise ValueError("df is not a dataframe-like object. Use display_table instead.")
+            raise DataFrameError(dfe)
+        elif not series_like(df):
+            raise SeriesError(dfe)
 
         try:
-            # Check if pandas is available
-            if 'pandas.core.frame.DataFrame' not in str(type(df)):
-                raise DataFrameError("The 'df' parameter must be a pandas DataFrame")
-
             # Validate numeric parameters
             if max_rows is not None and not isinstance(max_rows, int):
                 raise InvalidParameterError("max_rows", "integer", received=type(max_rows).__name__)
@@ -5046,12 +5094,15 @@ class Printer:
                 highlight_cells=highlight_cells,
                 **inline_styles
             )
-        except (DataFrameError, StyleNotFoundError, InvalidParameterError, DisplayEnvironmentError) as e:
+        except (DataFrameError, SeriesError, StyleNotFoundError, InvalidParameterError, DisplayEnvironmentError) as e:
             # Pass through known exceptions
             raise
         except Exception as e:
-            # Wrap unknown exceptions
-            raise DataFrameError(f"Error displaying DataFrame: {str(e)}")
+            # Wrap unknown exceptions with appropriate error type
+            if isinstance(df, pd.Series):
+                raise SeriesError(f"Error displaying Series: {str(e)}")
+            else:
+                raise DataFrameError(f"Error displaying DataFrame: {str(e)}")
 
     # noinspection PyUnresolvedReferences,da
     def display_list(self, items: Any, *,

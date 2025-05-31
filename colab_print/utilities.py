@@ -46,6 +46,7 @@ import html2text
 import markdown
 import requests
 from bs4 import BeautifulSoup
+import pandas as pd
 
 from colab_print.exception import AnimationError
 
@@ -57,6 +58,9 @@ __all__ = [
     # Functions
     "is_in_notebook",
     "process_animation_class",
+    "df_like",
+    "series_like",
+    "array_like",
 
     # Variables
     "DEFAULT_THEMES",
@@ -344,7 +348,6 @@ def is_in_notebook() -> bool:
         return False
 
 
-# noinspection PyCompatibility
 def df_like(df, debug: bool = False, threshold: float = 0.7) -> bool:
     """
     Check if an object is dataframe-like by examining common dataframe attributes and methods.
@@ -359,8 +362,16 @@ def df_like(df, debug: bool = False, threshold: float = 0.7) -> bool:
         threshold: The minimum ratio of common properties and methods to consider the object dataframe-like
     Returns:
         bool: True if the object is dataframe-like, False otherwise
+    
+    Note:
+        This function does not check for pandas Series. Use isinstance(df, pd.Series) 
+        separately if you need to detect Series objects.
     """
     if df is None:
+        return False
+        
+    # Direct check for pandas Series - we don't consider Series to be dataframe-like
+    if isinstance(df, pd.Series):
         return False
 
     # Define common properties (attributes) found in dataframes
@@ -507,6 +518,82 @@ def array_like(obj) -> bool:
     # print(f"Total: {total_present}/{total_items} (threshold: {threshold})")
 
     return total_present >= threshold
+
+
+def series_like(obj, debug: bool = False, threshold: float = 0.7) -> bool:
+    """
+    Check if an object is Series-like by examining common Series attributes and methods.
+    
+    This function checks for the presence of common attributes and methods that are 
+    typically found in pandas Series or Series-like implementations.
+    
+    Args:
+        obj: The object to check
+        debug: If True, print debugging information
+        threshold: The minimum ratio of common properties and methods to consider the object Series-like
+        
+    Returns:
+        bool: True if the object is Series-like, False otherwise
+    """
+    if obj is None:
+        return False
+        
+    # Direct check for pandas Series
+    if isinstance(obj, pd.Series):
+        return True
+        
+    # Define common properties (attributes) found in Series
+    properties = [
+        'index',        # Row labels
+        'values',       # Underlying data as array
+        'dtype',        # Data type of elements
+        'shape',        # Shape of the Series
+        'name',         # Name of the Series
+    ]
+    
+    # Define common methods found in Series
+    methods = [
+        'head',         # Return first n rows
+        'tail',         # Return last n rows
+        'copy',         # Return a copy of the Series
+        'apply',        # Apply a function
+        'map',          # Map values according to input correspondence
+        'astype',       # Cast to a specified type
+        'to_frame',     # Convert Series to DataFrame
+        'reset_index',  # Reset index and create a new one
+        'describe',     # Generate descriptive statistics
+        'value_counts', # Count unique values
+    ]
+    
+    # Check properties - they should exist as attributes
+    property_count = sum(hasattr(obj, prop) for prop in properties)
+    
+    # Check methods - they should be callable
+    method_count = sum(hasattr(obj, method) and callable(getattr(obj, method)) for method in methods)
+    
+    # Calculate total score
+    total_items = len(properties) + len(methods)
+    total_present = property_count + method_count
+    
+    # We consider it Series-like if it has at least threshold% of the common attributes and methods
+    _threshold = threshold * total_items
+    
+    if debug:
+        # For debugging
+        from pprint import pprint
+        print("*" * 100)
+        
+        pprint(f"{properties = }")
+        pprint(f"{methods = }")
+        
+        print("*" * 50)
+        print(f"Properties: {property_count}/{len(properties)}")
+        print(f"Methods: {method_count}/{len(methods)}")
+        print(f"Total: {total_present}/{total_items} (threshold: {threshold})")
+        
+        print("*" * 100)
+        
+    return total_present >= _threshold
 
 
 def md_to_html(source, head=False, escape=False) -> str:
