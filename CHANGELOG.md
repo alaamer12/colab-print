@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.1] - 2025-05-16
+
+### Added
+- Support for pandas Series objects in DataFrame display functions
+- New `SeriesError` exception class for more specific error handling
+- New utility function `series_like()` to detect Series-like objects
+
+### Fixed
+- Fixed crash when attempting to display pandas Series objects
+- Improved type checking with better validation for Series objects
+- Enhanced error messages for Series-specific exceptions
+
+### Improved
+- Better documentation for Series display capabilities in docstrings
+- Expanded DataFrame displayer to properly handle Series conversion
+- More robust validation of input types across display functions
+
 ## [0.6.0b0] - 2025-05-14
 
 ### Added
